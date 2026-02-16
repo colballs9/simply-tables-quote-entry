@@ -319,6 +319,40 @@ body {
 }
 .timer.recording { color: var(--red); }
 .timer.paused { color: var(--gold); }
+
+/* ====== v3.1 STYLES ====== */
+.editable-transcript {
+  background: var(--surface2); border: 1px solid var(--border); border-radius: 8px;
+  padding: 14px; min-height: 100px; width: 100%; resize: vertical;
+  font-size: 14px; line-height: 1.6; color: var(--text); font-family: 'DM Sans', sans-serif;
+}
+.transcribe-output {
+  background: var(--surface2); border: 1px solid var(--border); border-radius: 8px;
+  padding: 14px; min-height: 120px; white-space: pre-wrap; font-size: 14px;
+  line-height: 1.6; color: var(--text); margin-top: 12px; user-select: text;
+}
+.step-indicator { display: flex; gap: 8px; align-items: center; margin-bottom: 16px; }
+.step {
+  font-family: 'JetBrains Mono', monospace; font-size: 11px;
+  padding: 4px 10px; border-radius: 12px; background: var(--surface3); color: var(--text-dim);
+}
+.step.active { background: var(--gold); color: var(--bg); font-weight: 600; }
+.step.done { background: var(--green-bg); color: var(--green); border: 1px solid var(--green); }
+.section-jump { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0; }
+.section-jump button {
+  font-size: 12px; padding: 6px 12px; border-radius: 6px; border: 1px solid var(--border);
+  background: var(--surface2); color: var(--text-dim); cursor: pointer; transition: all 0.2s;
+}
+.section-jump button:hover { border-color: var(--gold); color: var(--gold); }
+.section-jump button.active-section { border-color: var(--gold); color: var(--gold); background: var(--gold-glow); }
+.review-panel {
+  background: var(--surface2); border: 1px solid var(--border); border-radius: 8px;
+  padding: 16px; margin-top: 12px; max-height: 300px; overflow-y: auto;
+}
+.review-field { display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+.review-field:last-child { border-bottom: none; }
+.review-field .label { color: var(--text-dim); font-family: 'JetBrains Mono', monospace; font-size: 11px; }
+.review-field .value { color: var(--text-bright); }
 </style>
 </head>
 <body>
@@ -391,6 +425,11 @@ body {
           <div class="icon">📁</div>
           <div class="title">Import</div>
           <div class="desc">Upload audio file</div>
+        <div class="mode-card" onclick="startTranscribeTool()">
+          <div class="icon">✍️</div>
+          <div class="title">Transcribe</div>
+          <div class="desc">Audio to text tool</div>
+        </div>
         </div>
       </div>
 
@@ -413,10 +452,20 @@ body {
       <div class="table-counter" id="tableCounter">Table <strong>1</strong> <span id="tableColLabel"></span></div>
       <div class="interview-area">
         <div class="section-label" id="sectionLabel">SPECS</div>
+
+        <div class="section-jump" id="sectionJump">
+          <button onclick="jumpToSection('SPECS')" class="active-section">Specs</button>
+          <button onclick="jumpToSection('TOP')">Top</button>
+          <button onclick="jumpToSection('BASE')">Base</button>
+          <button onclick="jumpToSection('FINISH')">Finish</button>
+          <button onclick="jumpToSection('COSTS')">Costs</button>
+          <button onclick="jumpToSection('HOURS')">Hours</button>
+        </div>
+
         <div class="question-text" id="questionText">Loading...</div>
 
         <div class="mic-area">
-          <button class="mic-btn" id="micBtn" onclick="toggleRecording()">🎙️</button>
+          <button class="mic-btn" id="micBtn" onclick="toggleRecording()">??️</button>
           <div class="mic-status" id="micStatus">Tap to speak</div>
           <div class="rec-indicator" id="recIndicator"></div>
         </div>
@@ -437,8 +486,14 @@ body {
         <div class="answer-history" id="answerHistory"></div>
       </div>
 
+      <div id="interviewReview" style="display:none">
+        <div class="section-label">REVIEW</div>
+        <div class="review-panel" id="reviewPanel"></div>
+      </div>
+
       <div class="nav-row">
         <button class="btn btn-outline btn-sm" onclick="showScreen('start')">← Back</button>
+        <button class="btn btn-outline btn-sm" onclick="toggleInterviewReview()">Review</button>
         <button class="btn btn-outline btn-sm" onclick="finishCurrentTable()">Next Table →</button>
         <button class="btn btn-gold btn-sm" onclick="finishAllTables()">Submit to Sheet</button>
       </div>
@@ -451,12 +506,19 @@ body {
     </div>
 
     <!-- ====== AUDIO DUMP SCREEN ====== -->
+    <!-- ====== AUDIO DUMP SCREEN ====== -->
     <div class="screen" id="screen-dump">
       <div class="dump-area">
         <div class="section-label">DUMP MODE</div>
 
+        <div class="step-indicator" id="dumpSteps">
+          <span class="step active" id="dumpStep1">1. Record</span>
+          <span class="step" id="dumpStep2">2. Review</span>
+          <span class="step" id="dumpStep3">3. Send</span>
+        </div>
+
         <div class="dump-toggle">
-          <button class="btn btn-sm" id="dumpMicMode" onclick="setDumpMode('mic')" style="opacity:1">🎙️ Record</button>
+          <button class="btn btn-sm" id="dumpMicMode" onclick="setDumpMode('mic')" style="opacity:1">??️ Record</button>
           <button class="btn btn-sm" id="dumpTextMode" onclick="setDumpMode('text')" style="opacity:0.4">⌨️ Type / Paste</button>
         </div>
 
@@ -464,7 +526,7 @@ body {
         <div id="dumpMicArea">
           <div class="timer" id="dumpTimer">0:00</div>
           <div class="mic-area">
-            <button class="mic-btn" id="dumpMicBtn" onclick="toggleDumpRecording()">🎙️</button>
+            <button class="mic-btn" id="dumpMicBtn" onclick="toggleDumpRecording()">??️</button>
             <div class="mic-status" id="dumpMicStatus">Tap to start recording</div>
           </div>
           <div class="nav-row" id="dumpRecControls" style="display:none">
@@ -477,9 +539,16 @@ body {
         <div id="dumpTextArea" style="display:none; width:100%">
           <textarea class="field-input" id="dumpTextInput" rows="10"
             style="width:100%;resize:vertical;font-size:14px;line-height:1.6"
-            placeholder="Type or paste your quote specs here...
+            placeholder="Type or paste your quote specs here..."></textarea>
+        </div>
 
-Example: T-1, quantity 4, 24 by 24, dining height, standard shape, ash hardwood, one and a quarter, eased edge, matte, stain natural color, mixed plank, grain length, stock base PMI flat metal base round 18 inch diameter plate, one base per table, powder coat black, adjustable glides."></textarea>
+        <!-- Editable transcript (shown after transcription) -->
+        <div id="dumpTranscriptArea" style="display:none">
+          <div class="field-label" style="margin-bottom:6px">TRANSCRIPT (editable)</div>
+          <textarea class="editable-transcript" id="dumpTranscriptEdit" rows="8"></textarea>
+          <div class="nav-row" style="margin-top:8px">
+            <button class="btn btn-outline btn-sm" onclick="dumpAddMore()">??️ Add More</button>
+          </div>
         </div>
 
         <div class="dump-transcript" id="dumpTranscript" style="display:none"></div>
@@ -487,17 +556,25 @@ Example: T-1, quantity 4, 24 by 24, dining height, standard shape, ash hardwood,
 
       <div class="nav-row">
         <button class="btn btn-outline btn-sm" onclick="showScreen('start')">Cancel</button>
-        <button class="btn btn-gold btn-sm" id="dumpSendBtn" onclick="processDump()">Send to Sheet</button>
+        <button class="btn btn-outline btn-sm" id="dumpTranscribeBtn" onclick="dumpTranscribeStep()" style="display:none">?? Transcribe</button>
+        <button class="btn btn-gold btn-sm" id="dumpSendBtn" onclick="dumpSendStep()" style="display:none">Send to Sheet</button>
       </div>
     </div>
 
+    <!-- ====== IMPORT SCREEN ====== -->
     <!-- ====== IMPORT SCREEN ====== -->
     <div class="screen" id="screen-import">
       <div class="dump-area">
         <div class="section-label">IMPORT AUDIO FILE</div>
 
+        <div class="step-indicator">
+          <span class="step active" id="importStep1">1. Upload</span>
+          <span class="step" id="importStep2">2. Review</span>
+          <span class="step" id="importStep3">3. Send</span>
+        </div>
+
         <div class="upload-zone" id="uploadZone" onclick="el('fileInput').click()">
-          <div class="upload-icon">📁</div>
+          <div class="upload-icon">??</div>
           <div class="upload-text">Drop audio file or click to browse</div>
           <div class="upload-hint">mp3, m4a, wav, webm, mp4 — up to 25MB</div>
           <input type="file" id="fileInput" accept="audio/*,.mp3,.m4a,.wav,.webm,.mp4,.ogg,.flac" style="display:none" onchange="onFileSelected(event)">
@@ -507,12 +584,65 @@ Example: T-1, quantity 4, 24 by 24, dining height, standard shape, ash hardwood,
           <div class="answer-chip" id="importFileName" style="font-size:13px; padding:8px 12px;"></div>
         </div>
 
-        <div class="dump-transcript" id="importTranscript" style="display:none"></div>
+        <!-- Editable transcript -->
+        <div id="importTranscriptArea" style="display:none">
+          <div class="field-label" style="margin-bottom:6px">TRANSCRIPT (editable)</div>
+          <textarea class="editable-transcript" id="importTranscriptEdit" rows="8"></textarea>
+        </div>
       </div>
 
       <div class="nav-row">
         <button class="btn btn-outline btn-sm" onclick="showScreen('start')">Cancel</button>
-        <button class="btn btn-gold btn-sm" id="importSendBtn" onclick="processImportFile()" disabled>Transcribe & Send to Sheet</button>
+        <button class="btn btn-outline btn-sm" id="importTranscribeBtn" onclick="importTranscribeStep()" disabled>?? Transcribe</button>
+        <button class="btn btn-gold btn-sm" id="importSendBtn" onclick="importSendStep()" style="display:none">Send to Sheet</button>
+      </div>
+    </div>
+
+    <!-- ====== TRANSCRIBE TOOL SCREEN ====== -->
+    <div class="screen" id="screen-transcribe">
+      <div class="dump-area">
+        <div class="section-label">TRANSCRIBE TOOL</div>
+        <div style="color:var(--text-dim); font-size:13px; margin-bottom:16px">Audio → text. No sheet connection needed.</div>
+
+        <div class="dump-toggle">
+          <button class="btn btn-sm" id="txMicMode" onclick="setTxMode('mic')" style="opacity:1">??️ Record</button>
+          <button class="btn btn-sm" id="txFileMode" onclick="setTxMode('file')" style="opacity:0.4">?? Upload File</button>
+        </div>
+
+        <div id="txMicArea">
+          <div class="timer" id="txTimer">0:00</div>
+          <div class="mic-area">
+            <button class="mic-btn" id="txMicBtn" onclick="toggleTxRecording()">??️</button>
+            <div class="mic-status" id="txMicStatus">Tap to start recording</div>
+          </div>
+          <div class="nav-row" id="txRecControls" style="display:none">
+            <button class="btn btn-outline btn-sm" onclick="pauseTxRecording()" id="txPauseBtn">⏸ Pause</button>
+            <button class="btn btn-danger btn-sm" onclick="stopTxRecording()">⏹ Stop</button>
+          </div>
+        </div>
+
+        <div id="txFileArea" style="display:none">
+          <div class="upload-zone" id="txUploadZone" onclick="el('txFileInput').click()">
+            <div class="upload-icon">??</div>
+            <div class="upload-text">Drop audio file or click to browse</div>
+            <input type="file" id="txFileInput" accept="audio/*,.mp3,.m4a,.wav,.webm,.mp4,.ogg,.flac" style="display:none" onchange="onTxFileSelected(event)">
+          </div>
+          <div id="txFileInfo" style="display:none; font-size:13px; padding:8px 12px;" class="answer-chip"></div>
+        </div>
+
+        <div id="txOutputArea" style="display:none">
+          <div class="field-label" style="margin-bottom:6px">TRANSCRIPT</div>
+          <div class="transcribe-output" id="txOutput"></div>
+          <div class="nav-row" style="margin-top:8px">
+            <button class="btn btn-outline btn-sm" onclick="copyTxOutput()">?? Copy</button>
+            <button class="btn btn-outline btn-sm" onclick="clearTxOutput()">Clear</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="nav-row">
+        <button class="btn btn-outline btn-sm" onclick="showScreen('start')">← Back</button>
+        <button class="btn btn-gold btn-sm" id="txGoBtn" onclick="runTranscribeTool()">?? Transcribe</button>
       </div>
     </div>
   </div>
@@ -556,6 +686,7 @@ const STATE = {
   dumpPausedTime: 0,
   dumpFullTranscript: '',
   interviewTranscripts: [],
+  dumpTranscribed: false, txRecording: false, txChunks: [], txTimer: null, txStartTime: 0, txPausedTime: 0, txFile: null,
 };
 
 // ============================================================
@@ -850,6 +981,21 @@ const QUESTIONS = [
   { section: 'FINISH', q: 'Finish type?', field: 'P_Desc_B_FinishType', type: 'text', condition: () => STATE.currentProduct.P_BaseType !== 'Top Only' },
   { section: 'FINISH', q: 'Finish color?', field: 'P_Desc_B_FinishColor', type: 'text', condition: () => STATE.currentProduct.P_BaseType !== 'Top Only' },
   { section: 'FINISH', q: 'Feet type?', field: 'P_Desc_B_Feet', type: 'text', condition: () => STATE.currentProduct.P_BaseType !== 'Top Only' },
+
+  // Section 5: Costs
+  { section: 'COSTS', q: 'Stock base cost per base?', field: 'P_SB_CostPB', type: 'number', condition: () => STATE.currentProduct.P_BaseType === 'Stock Base' },
+  { section: 'COSTS', q: 'Powder coat cost per base?', field: 'P_PowderCoat1_PB', type: 'number', condition: () => STATE.currentProduct.P_BaseType !== 'Top Only' },
+  { section: 'COSTS', q: 'Unit cost base items? (description, cost per base)', field: '_ucb_entry', type: 'text', condition: () => STATE.currentProduct.P_BaseType !== 'Top Only' },
+  { section: 'COSTS', q: 'Unit cost items? (description, cost, units per table)', field: '_uc_entry', type: 'text' },
+
+  // Section 6: Hours
+  { section: 'HOURS', q: 'Panel building? (top, base plank, base leg)', field: '_panel_building', type: 'text', condition: () => ['Hardwood','Live Edge'].includes(STATE.currentProduct.P_MaterialType) },
+  { section: 'HOURS', q: 'Cutting or CNC?', field: '_cutting_cnc', type: 'text', condition: () => ['Hardwood','Live Edge'].includes(STATE.currentProduct.P_MaterialType) },
+  { section: 'HOURS', q: 'Wood fab hours?', field: '_lc105_entry', type: 'text', condition: () => ['Hardwood','Live Edge'].includes(STATE.currentProduct.P_MaterialType) },
+  { section: 'HOURS', q: 'Metal fab hours?', field: '_lc107_entry', type: 'text', condition: () => STATE.currentProduct.P_BaseType !== 'Top Only' },
+  { section: 'HOURS', q: 'Material handling hours?', field: '_lc100_entry', type: 'text' },
+  { section: 'HOURS', q: 'Assembly hours?', field: '_lc110_entry', type: 'text' },
+  { section: 'HOURS', q: 'Packing & loading hours?', field: '_lc111_entry', type: 'text' },
 ];
 
 function isStone() {
@@ -877,6 +1023,7 @@ function showCurrentQuestion() {
   const q = QUESTIONS[idx];
 
   el('sectionLabel').textContent = q.section;
+  updateSectionButtons();
   el('questionText').textContent = q.q;
   el('transcriptLive').textContent = q.hint || '';
   el('answerDisplay').textContent = '';
@@ -1100,8 +1247,8 @@ CRITICAL FIELD RULES:
 - P_Desc_B_Feet: "Adjustable Glides", "Glides Non Adjustable", "Bolt Down"
 
 AUTO-SET RULES:
-- P_Desc_GrainDirectionPrefix → "Grain Direction:" whenever P_Desc_GrainDirection has a value
-- P_Desc_Thickness → copy from P_LumberThickness for hardwood
+- P_Desc_GrainDirectionPrefix = "Grain Direction:" whenever P_Desc_GrainDirection has a value
+- P_Desc_Thickness = copy from P_LumberThickness for hardwood
 - Hardwood stained: P_Desc_StainORColor = "Stain", P_Desc_ColorName = actual color
 - Hardwood natural: P_Desc_StainORColor = "Natural Color"
 - Stone: P_Desc_StainORColor = empty, P_Desc_ColorName = stone color
@@ -1114,14 +1261,107 @@ CHECKBOXES — only these exact names exist:
 
 "Same as table X" handling: When user says "same top as table 1" or "same base as table 2", copy all relevant fields from the referenced table.
 
+=== MATERIAL COSTS ===
+
+Unit Costs Base (UCB1-UCB4) — per product column:
+- P_UCB{n}_Description: description text
+- P_UCB{n}_PB: cost per base (auto-multiplied by P_BaseQtyPP)
+Slots: UCB1, UCB2, UCB3, UCB4
+
+Powder Coating — per product column:
+- P_PowderCoat1_PB: cost per base (use for base powder coating)
+- P_PowderCoat2_PB: second powder coat slot (use when mix of stock+custom bases)
+ROUTING: Base context → PowderCoat slots. Non-base items (metal band, accessory) → UC slot instead.
+If both PowderCoat slots full → overflow to UCB slot.
+
+Unit Costs Project (UC1-UC9) — per product column:
+- P_UC{n}_Description: description text
+- P_UC{n}_CostPU: cost per unit
+- P_UC{n}_UnitsPP: units per product (table)
+Slots: UC1 through UC9. Example: "powder coating, 1 unit per table, $85" → P_UC1_Description="Powder Coating", P_UC1_UnitsPP=1, P_UC1_CostPU=85
+
+Group Costs Base (GCB1-GCB4) — checkbox per product + total in column C:
+- P_GCB{n}_Check: true/false per product column
+- GCB{n}_TotalCost: lump-sum dollar amount (NON-P_ range, goes in job_level)
+Sheet distributes total across checked products proportionally.
+
+Group Costs Project (GC1-GC6) — same pattern:
+- P_GC{n}_Check: true/false per product column
+- GC{n}_TotalCost: lump-sum dollar amount (job_level)
+
+Stock Base Shipping:
+- P_SB_Shipping_Check: true/false per product column
+- GC_SB_Shipping_TotalCost: total shipping cost (job_level)
+
+Misc:
+- P_Misc_Check: true/false per product column
+- Misc_TotalCost: total misc cost (job_level)
+
+Consumables:
+- P_Consumables_Check: true/false per product column
+- Consumables_TotalCost: total consumables cost (job_level)
+
+=== LABOR HOURS ===
+
+Panel Building — master switches that auto-drive downstream hours (LC101, LC102, LC106, LC109):
+- P_Hours_Panel_Top_Check: panel building for top
+- P_Hours_HBPlank_Check: panel building for base planks
+- P_Hours_HBLeg_Check: panel building for base legs/beams
+Typical hardwood: check P_Hours_Panel_Top_Check = true, then manually add cutting/CNC + other LCs.
+
+LC103 Cutting (Sliding Table Saw):
+- P_LC103_TopPanel_Check: cut tops
+- P_LC103_HBPlank_Check: cut base planks
+- P_LC103_HBLeg_Check: cut base legs
+NO generic P_LC103_Check exists.
+
+LC104 CNC:
+- P_LC104_TopPanels_Check: CNC tops
+Usually LC103 OR LC104, rarely both.
+
+LC105 Wood Fab — three patterns:
+Pattern 1 (W1 block): P_LC105_W1_Check + P_LC105_W1_HoursPP (checkbox + hours per product)
+Pattern 2 (Unit Hours): P_LC105_UH1_Description + P_LC105_UH1_HoursPU (description + hours per unit, no checkbox)
+  Second slot: P_LC105_UH2_Description + P_LC105_UH2_HoursPU
+Pattern 3 (Group Hours): P_LC105_GH1_Check (per product) + LC105_GH1_TotalHours (job_level)
+  Second slot: P_LC105_GH2_Check + LC105_GH2_TotalHours
+
+LC107 Metal Fab — three sub-sections:
+Bases: P_LC107_Bases_Check + P_LC107_Bases_HoursPU (hours per base, auto × bases per product)
+Other1: P_LC107_Other1_Check + P_LC107_Other1_UnitsPP + P_LC107_Other1_HoursPU
+Other2: P_LC107_Other2_Check + P_LC107_Other2_UnitsPP + P_LC107_Other2_HoursPU
+Unit/Group: P_LC107_UH1_Description + P_LC107_UH1_HoursPU / P_LC107_GH1_Check + LC107_GH1_TotalHours
+
+LC100 (Material Handling), LC110 (Assembly), LC111 (Packing+Loading) — simple UH/GH:
+- P_LC{code}_UH1_HoursPU + P_LC{code}_UH1_Description (unit hours slot 1)
+- P_LC{code}_UH2_HoursPU + P_LC{code}_UH2_Description (unit hours slot 2)
+- P_LC{code}_GH1_Check + LC{code}_GH1_TotalHours (group hours slot 1, total is job_level)
+- P_LC{code}_GH2_Check + LC{code}_GH2_TotalHours (group hours slot 2)
+
+LC106 (Finish Sanding), LC108 (Stone Fab), LC109 (Finishing) — UH1 + GH1 only:
+- P_LC{code}_UH1_HoursPU
+- P_LC{code}_GH1_Check + LC{code}_GH1_TotalHours (job_level)
+
+PARSING RULES:
+- "Check the box" for a labor center = GROUP hours checkbox (only GH has per-product checkboxes)
+- Hours per unit/table without checkbox mention = UNIT hours
+- Group totals are stated once — if repeated, use first number
+- Cross-product: use same GH slot number for all products so they line up
+- Panel building auto-sets downstream LCs — don't double-count
+- If no description given for UH, just write hours — leave description at default
+
 PRODUCT COLUMNS: E through V (max 18). Column D is RowKey — never assign products there.
 Numbers stay numeric. Checkboxes use true/false booleans. Only include fields that have values.
 
-CRITICAL: Use ONLY the exact P_ field names listed in this prompt. NEVER invent field names. Common mistakes to avoid:
+CRITICAL: Use ONLY the exact P_ field names listed in this prompt. NEVER invent field names.
+Common mistakes to avoid:
 - P_BasesPerTop → WRONG. Use P_BaseQtyPP
 - P_Material → WRONG. Use P_MaterialType or P_MaterialTop
 - P_Height → WRONG. Use P_HeightName
-- P_Base → WRONG. Use P_BaseType`;
+- P_Base → WRONG. Use P_BaseType
+- P_PanelBuilding_Check → WRONG. Use P_Hours_Panel_Top_Check
+- LC111_GH1_Total → WRONG. Use LC111_GH1_TotalHours
+- LC107_Bases_Hours → WRONG. Use P_LC107_Bases_HoursPU`;
 
 async function callClaude(userMessage, mode) {
   const s = loadSettings();
@@ -1129,9 +1369,16 @@ async function callClaude(userMessage, mode) {
     ? `\n\nParse the following audio transcript into a complete products JSON. Start product columns at "${STATE.startColumn}".
 
 Return ONLY valid JSON in this exact format:
+Return ONLY valid JSON in this exact format:
 {
   "products": [{ "product_column": "E", "values": { "P_Title": "...", ... } }],
+  "job_level": { "GCB1_TotalCost": 300, "LC111_GH1_TotalHours": 4 },
   "uncertain": { "E": { "P_FieldName": "reason for uncertainty" } },
+  "missing": { "E": ["P_FieldName1", "P_FieldName2"] }
+}
+
+Include uncertain for any field where you're not fully confident. Include missing for fields you'd expect but weren't mentioned. Apply consistency checks across all tables.
+Put all non-P_ range values (group cost totals, group hours totals) in the "job_level" object, NOT inside products.`
   "missing": { "E": ["P_FieldName1", "P_FieldName2"] }
 }
 
@@ -1348,7 +1595,7 @@ function buildPayload(products) {
       delete values._column;
       return { product_column: col, values: values };
     }),
-    uncertain: {},
+    job_level: {}, uncertain: {},
     missing: {}
   };
 }
@@ -1441,6 +1688,7 @@ function stopDumpRecording() {
   el('dumpMicBtn').classList.remove('recording');
   el('dumpMicStatus').textContent = 'Recording stopped — ' + el('dumpTimer').textContent;
   el('dumpRecControls').style.display = 'none';
+  el('dumpTranscribeBtn').style.display = 'block';
   el('dumpPauseBtn').textContent = '⏸ Pause';
   el('dumpTimer').classList.remove('recording');
   el('dumpTimer').classList.remove('paused');
@@ -1454,68 +1702,67 @@ function toggleDumpRecording() {
   }
 }
 
-async function processDump() {
+async function dumpTranscribeStep() {
   let transcript = '';
-
   if (dumpMode === 'text') {
-    // Text mode — grab from textarea
     transcript = el('dumpTextInput').value.trim();
-    if (!transcript) {
-      el('dumpTranscript').textContent = 'Type or paste your specs first';
-      el('dumpTranscript').style.display = 'block';
-      return;
-    }
+    if (!transcript) { el('dumpMicStatus').textContent = 'Type or paste specs first'; return; }
   } else {
-    // Mic mode — stop recording if active, then transcribe
     if (STATE.dumpRecording) stopDumpRecording();
-
-    if (STATE.dumpChunks.length === 0) {
-      el('dumpMicStatus').textContent = 'Record something first';
-      return;
-    }
-
+    if (STATE.dumpChunks.length === 0) { el('dumpMicStatus').textContent = 'Record something first'; return; }
     showProcessing('Transcribing audio...');
     try {
       const blob = new Blob(STATE.dumpChunks, { type: 'audio/webm' });
       transcript = await transcribeAudio(blob);
-    } catch(e) {
-      hideProcessing();
-      el('dumpMicStatus').textContent = 'Transcription error: ' + e.message;
-      return;
-    }
+    } catch(e) { hideProcessing(); el('dumpMicStatus').textContent = 'Error: ' + e.message; return; }
+    hideProcessing();
   }
+  // Handle append mode
+  if (STATE._appendMode && el('dumpTranscriptEdit').value) {
+    el('dumpTranscriptEdit').value += '\n' + transcript;
+    STATE._appendMode = false;
+  } else {
+    el('dumpTranscriptEdit').value = transcript;
+  }
+  el('dumpTranscriptArea').style.display = 'block';
+  el('dumpTranscribeBtn').style.display = 'none';
+  el('dumpSendBtn').style.display = 'block';
+  STATE.dumpTranscribed = true;
+  el('dumpStep1').className = 'step done';
+  el('dumpStep2').className = 'step active';
+}
 
-  el('dumpTranscript').textContent = transcript;
-  el('dumpTranscript').style.display = 'block';
-  STATE.dumpFullTranscript = transcript;
+function dumpAddMore() {
+  STATE.dumpChunks = [];
+  el('dumpMicArea').style.display = 'block';
+  el('dumpTextArea').style.display = 'none';
+  dumpMode = 'mic';
+  el('dumpMicMode').style.opacity = '1';
+  el('dumpTextMode').style.opacity = '0.4';
+  el('dumpMicStatus').textContent = 'Tap to record more';
+  el('dumpTranscribeBtn').style.display = 'block';
+  el('dumpTranscribeBtn').textContent = '\ud83d\udcdd Transcribe Addition';
+  STATE._appendMode = true;
+}
 
+async function dumpSendStep() {
+  const transcript = el('dumpTranscriptEdit').value.trim();
+  if (!transcript) return;
   try {
-    // Send to Claude
     showProcessing('Claude is parsing ' + transcript.split(' ').length + ' words...');
-    const result = await callClaude(
-      'Audio transcript from quote entry session. Starting column: ' + STATE.startColumn + '\n\n' + transcript,
-      'dump'
-    );
-
-    // Build payload and send to sheet
+    const result = await callClaude('Audio transcript from quote entry session. Starting column: ' + STATE.startColumn + '\n\n' + transcript, 'dump');
     showProcessing('Writing to sheet...');
     const payload = {
-      action: 'import',
-      spreadsheetId: STATE.spreadsheetId,
-      setNumber: parseInt(el('sheetSelect').value),
-      products: result.products || [],
-      uncertain: result.uncertain || {},
-      missing: result.missing || {}
+      action: 'import', spreadsheetId: STATE.spreadsheetId, setNumber: parseInt(el('sheetSelect').value),
+      products: result.products || [], job_level: result.job_level || {},
+      uncertain: result.uncertain || {}, missing: result.missing || {}
     };
-
     await sendToSheet(payload);
-
-  } catch(e) {
-    hideProcessing();
-    el('dumpMicStatus').textContent = 'Error: ' + e.message;
-    console.error(e);
-  }
+    el('dumpStep2').className = 'step done'; el('dumpStep3').className = 'step active';
+  } catch(e) { hideProcessing(); el('dumpMicStatus').textContent = 'Error: ' + e.message; console.error(e); }
 }
+
+async function processDump() { await dumpTranscribeStep(); }
 
 // ============================================================
 // SEND TO SHEET
@@ -1543,6 +1790,8 @@ async function sendToSheet(payload) {
         showToast(
           '✅ ' + sm.productsWritten + ' products imported',
           sm.fieldsWritten + ' fields → ' + sm.sheetName + ' (' + sm.columns + ')' +
+          (sm.jobFieldsWritten ? '\n\ud83d\udccb ' + sm.jobFieldsWritten + ' job-level fields (col C)' : '') +
+          (sm.expandedRows ? '\n\ud83d\udcc2 ' + sm.expandedRows + ' groups expanded' : '') +
           (sm.uncertainCount ? '\n⚠️ ' + sm.uncertainCount + ' uncertain (yellow)' : '') +
           (sm.missingCount ? '\n❌ ' + sm.missingCount + ' missing (red)' : '') +
           (sm.errors.length ? '\n⛔ Errors: ' + sm.errors.join(', ') : '')
@@ -1591,17 +1840,29 @@ function newQuote() {
   STATE.questionIndex = 0;
   STATE.dumpFullTranscript = '';
   STATE.dumpChunks = [];
+  STATE.dumpTranscribed = false;
   STATE.paused = false;
+  STATE._appendMode = false;
   el('answerHistory').innerHTML = '';
   el('dumpTranscript').textContent = '';
   el('dumpTranscript').style.display = 'none';
   el('dumpTimer').textContent = '0:00';
   el('dumpTimer').classList.remove('recording', 'paused');
   el('dumpTextInput').value = '';
-  el('importTranscript').textContent = '';
-  el('importTranscript').style.display = 'none';
+  el('dumpTranscriptArea').style.display = 'none';
+  if (el('dumpTranscriptEdit')) el('dumpTranscriptEdit').value = '';
+  el('dumpTranscribeBtn').style.display = 'none';
+  el('dumpSendBtn').style.display = 'none';
+  el('dumpStep1').className = 'step active';
+  el('dumpStep2').className = 'step';
+  el('dumpStep3').className = 'step';
+  if (el('importTranscriptArea')) el('importTranscriptArea').style.display = 'none';
+  if (el('importTranscriptEdit')) el('importTranscriptEdit').value = '';
   el('importFileInfo').style.display = 'none';
-  el('importSendBtn').disabled = true;
+  el('importTranscribeBtn').disabled = true;
+  el('importTranscribeBtn').style.display = 'block';
+  el('importSendBtn').style.display = 'none';
+  if (el('importStep1')) { el('importStep1').className = 'step active'; el('importStep2').className = 'step'; el('importStep3').className = 'step'; }
   importFile = null;
   showScreen('start');
   loadSheetInfo();
@@ -1626,18 +1887,27 @@ function startInterview() {
 
 function startAudioDump() {
   if (!STATE.spreadsheetId) {
-    el('sheetName').innerHTML = '⚠️ Paste a Google Sheet URL first';
+    el('sheetName').innerHTML = '\u26a0\ufe0f Paste a Google Sheet URL first';
     return;
   }
   STATE.products = [];
   STATE.dumpChunks = [];
   STATE.dumpFullTranscript = '';
+  STATE.dumpTranscribed = false;
+  STATE._appendMode = false;
   dumpMode = 'mic';
   el('dumpTranscript').textContent = '';
   el('dumpTranscript').style.display = 'none';
   el('dumpTimer').textContent = '0:00';
   el('dumpTimer').classList.remove('recording', 'paused');
   el('dumpTextInput').value = '';
+  el('dumpTranscriptArea').style.display = 'none';
+  if (el('dumpTranscriptEdit')) el('dumpTranscriptEdit').value = '';
+  el('dumpTranscribeBtn').style.display = 'none';
+  el('dumpSendBtn').style.display = 'none';
+  el('dumpStep1').className = 'step active';
+  el('dumpStep2').className = 'step';
+  el('dumpStep3').className = 'step';
   setDumpMode('mic');
   showScreen('dump');
 }
@@ -1649,15 +1919,18 @@ let importFile = null;
 
 function startImport() {
   if (!STATE.spreadsheetId) {
-    el('sheetName').innerHTML = '⚠️ Paste a Google Sheet URL first';
+    el('sheetName').innerHTML = '\u26a0\ufe0f Paste a Google Sheet URL first';
     return;
   }
   importFile = null;
   el('importFileName').textContent = '';
   el('importFileInfo').style.display = 'none';
-  el('importTranscript').textContent = '';
-  el('importTranscript').style.display = 'none';
-  el('importSendBtn').disabled = true;
+  if (el('importTranscriptArea')) el('importTranscriptArea').style.display = 'none';
+  if (el('importTranscriptEdit')) el('importTranscriptEdit').value = '';
+  el('importTranscribeBtn').disabled = true;
+  el('importTranscribeBtn').style.display = 'block';
+  el('importSendBtn').style.display = 'none';
+  if (el('importStep1')) { el('importStep1').className = 'step active'; el('importStep2').className = 'step'; el('importStep3').className = 'step'; }
   el('fileInput').value = '';
   showScreen('import');
 }
@@ -1669,39 +1942,52 @@ function onFileSelected(event) {
 }
 
 function setImportFile(file) {
-  // Validate size (25MB Whisper limit)
   if (file.size > 25 * 1024 * 1024) {
-    el('importFileName').textContent = '⚠️ File too large — Whisper limit is 25MB';
+    el('importFileName').textContent = '\u26a0\ufe0f File too large (25MB limit)';
     el('importFileInfo').style.display = 'block';
-    el('importSendBtn').disabled = true;
+    el('importTranscribeBtn').disabled = true;
     return;
   }
-
   importFile = file;
   const sizeMB = (file.size / (1024 * 1024)).toFixed(1);
-  el('importFileName').innerHTML = '<span class="label">📎 ' + file.name + '</span> (' + sizeMB + ' MB)';
+  el('importFileName').innerHTML = '\ud83d\udcce ' + file.name + ' (' + sizeMB + ' MB)';
   el('importFileInfo').style.display = 'block';
-  el('importSendBtn').disabled = false;
+  el('importTranscribeBtn').disabled = false;
 }
 
-async function processImportFile() {
+async function importTranscribeStep() {
   if (!importFile) return;
-
   showProcessing('Transcribing ' + importFile.name + '...');
-
   try {
-    // Send file to Whisper
     const transcript = await transcribeAudio(importFile);
+    hideProcessing();
+    el('importTranscriptEdit').value = transcript;
+    el('importTranscriptArea').style.display = 'block';
+    el('importTranscribeBtn').style.display = 'none';
+    el('importSendBtn').style.display = 'block';
+    el('importStep1').className = 'step done';
+    el('importStep2').className = 'step active';
+  } catch(e) { hideProcessing(); el('importFileName').textContent = '\u274c Error: ' + e.message; }
+}
 
-    el('importTranscript').textContent = transcript;
-    el('importTranscript').style.display = 'block';
-
-    // Send to Claude
+async function importSendStep() {
+  const transcript = el('importTranscriptEdit').value.trim();
+  if (!transcript) return;
+  try {
     showProcessing('Claude is parsing ' + transcript.split(' ').length + ' words...');
-    const result = await callClaude(
-      'Audio transcript from quote entry session. Starting column: ' + STATE.startColumn + '\n\n' + transcript,
-      'dump'
-    );
+    const result = await callClaude('Audio transcript from quote entry session. Starting column: ' + STATE.startColumn + '\n\n' + transcript, 'dump');
+    showProcessing('Writing to sheet...');
+    const payload = {
+      action: 'import', spreadsheetId: STATE.spreadsheetId, setNumber: parseInt(el('sheetSelect').value),
+      products: result.products || [], job_level: result.job_level || {},
+      uncertain: result.uncertain || {}, missing: result.missing || {}
+    };
+    await sendToSheet(payload);
+    el('importStep2').className = 'step done'; el('importStep3').className = 'step active';
+  } catch(e) { hideProcessing(); el('importFileName').textContent = '\u274c Error: ' + e.message; }
+}
+
+async function processImportFile() { await importTranscribeStep(); }
 
     // Send to sheet
     showProcessing('Writing to sheet...');
@@ -1747,6 +2033,165 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // ============================================================
+
+// ============================================================
+// TRANSCRIBE TOOL
+// ============================================================
+let txMode = 'mic';
+
+function startTranscribeTool() {
+  STATE.txChunks = [];
+  STATE.txFile = null;
+  STATE.txRecording = false;
+  if (el('txOutput')) el('txOutput').textContent = '';
+  if (el('txOutputArea')) el('txOutputArea').style.display = 'none';
+  if (el('txTimer')) el('txTimer').textContent = '0:00';
+  if (el('txMicStatus')) el('txMicStatus').textContent = 'Tap to start recording';
+  txMode = 'mic';
+  if (el('txMicArea')) el('txMicArea').style.display = 'block';
+  if (el('txFileArea')) el('txFileArea').style.display = 'none';
+  if (el('txMicMode')) el('txMicMode').style.opacity = '1';
+  if (el('txFileMode')) el('txFileMode').style.opacity = '0.4';
+  showScreen('transcribe');
+}
+
+function setTxMode(mode) {
+  txMode = mode;
+  el('txMicArea').style.display = mode === 'mic' ? 'block' : 'none';
+  el('txFileArea').style.display = mode === 'file' ? 'block' : 'none';
+  el('txMicMode').style.opacity = mode === 'mic' ? '1' : '0.4';
+  el('txFileMode').style.opacity = mode === 'file' ? '1' : '0.4';
+}
+
+async function toggleTxRecording() {
+  if (!STATE.txRecording) {
+    try {
+      const stream = await getMediaStream();
+      STATE.txChunks = [];
+      STATE.mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm;codecs=opus' });
+      STATE.mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) STATE.txChunks.push(e.data); };
+      STATE.mediaRecorder.onstop = () => { stream.getTracks().forEach(t => t.stop()); };
+      STATE.mediaRecorder.start(1000);
+      STATE.txRecording = true;
+      STATE.txStartTime = Date.now(); STATE.txPausedTime = 0;
+      el('txMicBtn').classList.add('recording');
+      el('txMicStatus').textContent = 'Recording...';
+      el('txRecControls').style.display = 'flex';
+      el('txTimer').classList.add('recording');
+      STATE.txTimer = setInterval(() => {
+        const s = Math.floor((Date.now() - STATE.txStartTime - STATE.txPausedTime) / 1000);
+        el('txTimer').textContent = Math.floor(s/60) + ':' + String(s%60).padStart(2,'0');
+      }, 100);
+    } catch(e) { el('txMicStatus').textContent = 'Mic error: ' + e.message; }
+  } else { stopTxRecording(); }
+}
+
+function pauseTxRecording() {
+  if (!STATE.mediaRecorder) return;
+  if (STATE.mediaRecorder.state === 'recording') {
+    STATE.mediaRecorder.pause(); STATE._txPauseStart = Date.now();
+    clearInterval(STATE.txTimer);
+    el('txMicBtn').classList.remove('recording'); el('txMicStatus').textContent = 'Paused';
+    el('txPauseBtn').textContent = '\u25b6 Resume';
+    el('txTimer').classList.remove('recording'); el('txTimer').classList.add('paused');
+  } else if (STATE.mediaRecorder.state === 'paused') {
+    STATE.txPausedTime += Date.now() - STATE._txPauseStart;
+    STATE.mediaRecorder.resume();
+    el('txMicBtn').classList.add('recording'); el('txMicStatus').textContent = 'Recording...';
+    el('txPauseBtn').textContent = '\u23f8 Pause';
+    el('txTimer').classList.add('recording'); el('txTimer').classList.remove('paused');
+    STATE.txTimer = setInterval(() => {
+      const s = Math.floor((Date.now() - STATE.txStartTime - STATE.txPausedTime) / 1000);
+      el('txTimer').textContent = Math.floor(s/60) + ':' + String(s%60).padStart(2,'0');
+    }, 100);
+  }
+}
+
+function stopTxRecording() {
+  if (STATE.mediaRecorder && STATE.mediaRecorder.state !== 'inactive') STATE.mediaRecorder.stop();
+  STATE.txRecording = false; clearInterval(STATE.txTimer);
+  el('txMicBtn').classList.remove('recording'); el('txMicStatus').textContent = 'Recording stopped';
+  el('txRecControls').style.display = 'none'; el('txTimer').classList.remove('recording');
+}
+
+function onTxFileSelected(event) {
+  const file = event.target.files[0]; if (!file) return;
+  if (file.size > 25 * 1024 * 1024) { el('txFileInfo').textContent = 'File too large'; el('txFileInfo').style.display = 'block'; return; }
+  STATE.txFile = file;
+  el('txFileInfo').textContent = '\ud83d\udcce ' + file.name;
+  el('txFileInfo').style.display = 'block';
+}
+
+async function runTranscribeTool() {
+  let src;
+  if (txMode === 'mic') {
+    if (STATE.txRecording) stopTxRecording();
+    if (!STATE.txChunks || STATE.txChunks.length === 0) { el('txMicStatus').textContent = 'Record something first'; return; }
+    src = new Blob(STATE.txChunks, { type: 'audio/webm' });
+  } else {
+    if (!STATE.txFile) { el('txFileInfo').textContent = 'Select a file first'; el('txFileInfo').style.display = 'block'; return; }
+    src = STATE.txFile;
+  }
+  showProcessing('Transcribing...');
+  try {
+    const t = await transcribeAudio(src); hideProcessing();
+    el('txOutput').textContent = t; el('txOutputArea').style.display = 'block';
+  } catch(e) { hideProcessing(); el('txMicStatus').textContent = 'Error: ' + e.message; }
+}
+
+function copyTxOutput() {
+  navigator.clipboard.writeText(el('txOutput').textContent).then(() => {
+    const btn = event.target;
+    const orig = btn.textContent;
+    btn.textContent = '\u2705 Copied!';
+    setTimeout(() => { btn.textContent = orig; }, 2000);
+  });
+}
+
+function clearTxOutput() {
+  el('txOutput').textContent = ''; el('txOutputArea').style.display = 'none';
+  STATE.txChunks = []; STATE.txFile = null;
+  el('txTimer').textContent = '0:00'; el('txMicStatus').textContent = 'Tap to start recording';
+  if (el('txFileInfo')) { el('txFileInfo').style.display = 'none'; }
+}
+
+// ============================================================
+// INTERVIEW: Section Jump + Review
+// ============================================================
+function jumpToSection(sectionName) {
+  for (let i = 0; i < QUESTIONS.length; i++) {
+    if (QUESTIONS[i].section === sectionName) {
+      const nextIdx = getNextQuestionIndex(i);
+      if (nextIdx >= 0) { STATE.questionIndex = nextIdx; showCurrentQuestion(); updateSectionButtons(); return; }
+    }
+  }
+}
+
+function updateSectionButtons() {
+  const q = QUESTIONS[STATE.questionIndex];
+  if (!q) return;
+  const sec = q.section;
+  document.querySelectorAll('.section-jump button').forEach(btn => {
+    btn.classList.toggle('active-section', btn.textContent.toUpperCase() === sec);
+  });
+}
+
+function toggleInterviewReview() {
+  const p = el('interviewReview');
+  if (p.style.display === 'none') { p.style.display = 'block'; buildReviewPanel(); }
+  else { p.style.display = 'none'; }
+}
+
+function buildReviewPanel() {
+  const p = STATE.currentProduct;
+  let html = '';
+  Object.keys(p).forEach(k => {
+    if (k === '_column' || p[k] === '' || p[k] === null || p[k] === undefined) return;
+    html += '<div class="review-field"><span class="label">' + k + '</span><span class="value">' + p[k] + '</span></div>';
+  });
+  el('reviewPanel').innerHTML = html || '<div style="color:var(--text-dim);font-size:13px">No fields entered yet</div>';
+}
+
 // INIT
 // ============================================================
 window.addEventListener('DOMContentLoaded', () => {
