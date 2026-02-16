@@ -1,0 +1,1370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Simply Tables — Quote Entry</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --gold: #E5A94E;
+  --gold-dim: #c98c3a;
+  --gold-glow: rgba(229,169,78,0.15);
+  --bg: #0f0f0f;
+  --surface: #1a1a1a;
+  --surface2: #222222;
+  --surface3: #2a2a2a;
+  --border: #333;
+  --text: #e0e0e0;
+  --text-dim: #888;
+  --text-bright: #fff;
+  --red: #ef5350;
+  --red-dim: #FFCDD2;
+  --yellow: #FFF9C4;
+  --green: #66bb6a;
+  --green-bg: rgba(102,187,106,0.1);
+  --blue: #42a5f5;
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+
+body {
+  font-family: 'DM Sans', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ====== LAYOUT ====== */
+.app { max-width: 600px; margin: 0 auto; min-height: 100vh; display: flex; flex-direction: column; }
+
+.header {
+  padding: 16px 20px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.header-left { display: flex; align-items: center; gap: 12px; }
+.logo { font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 15px; color: var(--gold); letter-spacing: 1px; }
+.logo span { color: var(--text-dim); font-weight: 400; }
+.header-badge {
+  font-family: 'JetBrains Mono', monospace; font-size: 11px;
+  background: var(--surface3); color: var(--text-dim);
+  padding: 3px 8px; border-radius: 4px;
+}
+.gear-btn {
+  background: none; border: none; color: var(--text-dim); cursor: pointer;
+  font-size: 20px; padding: 4px; transition: color 0.2s;
+}
+.gear-btn:hover { color: var(--gold); }
+
+.content { flex: 1; padding: 20px; }
+
+/* ====== SCREENS ====== */
+.screen { display: none; }
+.screen.active { display: flex; flex-direction: column; gap: 20px; }
+
+/* ====== SETTINGS ====== */
+.field-group { display: flex; flex-direction: column; gap: 6px; }
+.field-label {
+  font-family: 'JetBrains Mono', monospace; font-size: 11px;
+  color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px;
+}
+.field-input {
+  background: var(--surface2); border: 1px solid var(--border); border-radius: 6px;
+  padding: 12px 14px; color: var(--text); font-size: 14px; font-family: 'JetBrains Mono', monospace;
+  transition: border-color 0.2s;
+}
+.field-input:focus { outline: none; border-color: var(--gold); }
+.field-input::placeholder { color: #555; }
+
+.btn {
+  padding: 14px 24px; border: none; border-radius: 8px; font-size: 15px;
+  font-weight: 600; cursor: pointer; transition: all 0.2s; font-family: 'DM Sans', sans-serif;
+}
+.btn-gold { background: var(--gold); color: var(--bg); }
+.btn-gold:hover { background: var(--gold-dim); transform: translateY(-1px); }
+.btn-gold:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+.btn-outline {
+  background: transparent; border: 1px solid var(--border); color: var(--text);
+}
+.btn-outline:hover { border-color: var(--gold); color: var(--gold); }
+.btn-sm { padding: 8px 16px; font-size: 13px; border-radius: 6px; }
+.btn-danger { background: var(--red); color: #fff; }
+
+.status-dot {
+  width: 8px; height: 8px; border-radius: 50%; display: inline-block;
+}
+.status-dot.ok { background: var(--green); }
+.status-dot.err { background: var(--red); }
+.status-dot.pending { background: var(--text-dim); }
+
+.test-result {
+  font-family: 'JetBrains Mono', monospace; font-size: 12px;
+  padding: 8px 12px; border-radius: 4px; margin-top: 4px;
+}
+.test-ok { background: var(--green-bg); color: var(--green); }
+.test-err { background: rgba(239,83,80,0.1); color: var(--red); }
+
+/* ====== START SCREEN ====== */
+.sheet-selector {
+  background: var(--surface); border-radius: 10px; padding: 16px;
+  border: 1px solid var(--border);
+}
+.sheet-selector select {
+  width: 100%; padding: 10px; background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 6px; color: var(--text); font-size: 14px;
+}
+.col-indicator {
+  margin-top: 8px; font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--text-dim);
+}
+.col-indicator strong { color: var(--gold); }
+
+.mode-cards { display: flex; gap: 12px; }
+.mode-card {
+  flex: 1; background: var(--surface); border: 2px solid var(--border);
+  border-radius: 12px; padding: 24px 16px; text-align: center; cursor: pointer;
+  transition: all 0.2s;
+}
+.mode-card:hover { border-color: var(--gold); background: var(--gold-glow); }
+.mode-card .icon { font-size: 36px; margin-bottom: 12px; }
+.mode-card .title { font-weight: 700; font-size: 16px; margin-bottom: 4px; }
+.mode-card .desc { font-size: 12px; color: var(--text-dim); }
+
+.toggles {
+  display: flex; gap: 16px; justify-content: center;
+}
+.toggle {
+  display: flex; align-items: center; gap: 8px; cursor: pointer;
+  font-size: 13px; color: var(--text-dim);
+}
+.toggle input { display: none; }
+.toggle-track {
+  width: 36px; height: 20px; background: var(--surface3); border-radius: 10px;
+  position: relative; transition: background 0.2s;
+}
+.toggle-track::after {
+  content: ''; position: absolute; top: 2px; left: 2px;
+  width: 16px; height: 16px; background: var(--text-dim); border-radius: 50%;
+  transition: all 0.2s;
+}
+.toggle input:checked + .toggle-track { background: var(--gold); }
+.toggle input:checked + .toggle-track::after { left: 18px; background: var(--bg); }
+
+/* ====== RECORDING ====== */
+.interview-area { display: flex; flex-direction: column; align-items: center; gap: 20px; flex: 1; }
+
+.section-label {
+  font-family: 'JetBrains Mono', monospace; font-size: 11px;
+  color: var(--gold); text-transform: uppercase; letter-spacing: 2px;
+  text-align: center;
+}
+
+.question-text {
+  font-size: 24px; font-weight: 700; text-align: center;
+  color: var(--text-bright); line-height: 1.3; min-height: 72px;
+  display: flex; align-items: center; justify-content: center;
+}
+
+.mic-area { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+
+.mic-btn {
+  width: 80px; height: 80px; border-radius: 50%; border: 3px solid var(--border);
+  background: var(--surface); cursor: pointer; display: flex; align-items: center;
+  justify-content: center; font-size: 32px; transition: all 0.2s;
+  position: relative;
+}
+.mic-btn:hover { border-color: var(--gold); }
+.mic-btn.recording {
+  border-color: var(--red); background: rgba(239,83,80,0.1);
+  animation: pulse 1.5s ease-in-out infinite;
+}
+.mic-btn.processing { border-color: var(--gold); opacity: 0.6; }
+
+@keyframes pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(239,83,80,0.3); }
+  50% { box-shadow: 0 0 0 16px rgba(239,83,80,0); }
+}
+
+.mic-status {
+  font-family: 'JetBrains Mono', monospace; font-size: 12px;
+  color: var(--text-dim); height: 18px;
+}
+
+.transcript-live {
+  font-family: 'JetBrains Mono', monospace; font-size: 13px;
+  color: var(--text-dim); text-align: center; min-height: 40px;
+  padding: 8px; font-style: italic;
+}
+
+.answer-display {
+  font-size: 18px; font-weight: 600; color: var(--gold); text-align: center;
+  min-height: 28px;
+}
+
+/* Answer chips */
+.answer-history {
+  display: flex; flex-wrap: wrap; gap: 6px; padding: 12px;
+  background: var(--surface); border-radius: 8px; border: 1px solid var(--border);
+  max-height: 200px; overflow-y: auto; width: 100%;
+}
+.answer-chip {
+  font-family: 'JetBrains Mono', monospace; font-size: 11px;
+  background: var(--surface3); padding: 4px 8px; border-radius: 4px;
+  color: var(--text-dim); white-space: nowrap;
+}
+.answer-chip .label { color: var(--gold); }
+
+/* ====== AUDIO DUMP ====== */
+.dump-area { display: flex; flex-direction: column; align-items: center; gap: 20px; flex: 1; }
+
+.timer {
+  font-family: 'JetBrains Mono', monospace; font-size: 48px;
+  font-weight: 700; color: var(--text-bright); letter-spacing: 2px;
+}
+
+.dump-transcript {
+  width: 100%; max-height: 300px; overflow-y: auto;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+  padding: 12px; font-size: 14px; line-height: 1.6; color: var(--text);
+}
+
+/* ====== PROCESSING ====== */
+.processing-overlay {
+  display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85);
+  z-index: 100; flex-direction: column; align-items: center; justify-content: center; gap: 20px;
+}
+.processing-overlay.active { display: flex; }
+
+.spinner {
+  width: 48px; height: 48px; border: 3px solid var(--border);
+  border-top-color: var(--gold); border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.processing-text {
+  font-family: 'JetBrains Mono', monospace; font-size: 14px; color: var(--text-dim);
+  text-align: center;
+}
+
+/* ====== TOAST ====== */
+.toast {
+  display: none; position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+  background: var(--surface); border: 1px solid var(--green); border-radius: 12px;
+  padding: 16px 24px; z-index: 200; max-width: 500px; width: 90%;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+}
+.toast.active { display: block; animation: slideUp 0.3s ease-out; }
+@keyframes slideUp { from { transform: translateX(-50%) translateY(20px); opacity:0; } to { transform: translateX(-50%) translateY(0); opacity:1; } }
+
+.toast-title { font-weight: 700; font-size: 16px; color: var(--green); margin-bottom: 4px; }
+.toast-body { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--text-dim); line-height: 1.5; }
+.toast-actions { margin-top: 12px; display: flex; gap: 8px; }
+
+/* ====== NAV BUTTONS ====== */
+.nav-row { display: flex; gap: 8px; justify-content: center; margin-top: auto; padding-top: 12px; }
+
+/* ====== TABLE COUNTER ====== */
+.table-counter {
+  font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--text-dim);
+  text-align: center;
+}
+.table-counter strong { color: var(--gold); }
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- HEADER -->
+  <div class="header">
+    <div class="header-left">
+      <div class="logo">ST <span>Quote Entry</span></div>
+      <div class="header-badge" id="sheetBadge">—</div>
+    </div>
+    <button class="gear-btn" onclick="showScreen('settings')" title="Settings">⚙</button>
+  </div>
+
+  <div class="content">
+    <!-- ====== SETTINGS SCREEN ====== -->
+    <div class="screen" id="screen-settings">
+      <div class="field-group">
+        <div class="field-label">OpenAI API Key (Whisper)</div>
+        <input type="password" class="field-input" id="openaiKey" placeholder="sk-...">
+      </div>
+      <div class="field-group">
+        <div class="field-label">Anthropic API Key (Claude)</div>
+        <input type="password" class="field-input" id="anthropicKey" placeholder="sk-ant-...">
+      </div>
+      <div class="field-group">
+        <div class="field-label">Apps Script Web App URL (deploy once, use forever)</div>
+        <input type="text" class="field-input" id="appsScriptUrl" placeholder="https://script.google.com/macros/s/.../exec">
+      </div>
+      <button class="btn btn-outline btn-sm" onclick="testConnections()">Test Connections</button>
+      <div id="testResults"></div>
+      <div style="flex:1"></div>
+      <button class="btn btn-gold" onclick="saveSettings()">Save & Continue</button>
+      <button class="btn btn-outline btn-sm" style="margin-top:4px" onclick="clearAllSettings()">Clear All Data</button>
+    </div>
+
+    <!-- ====== START SCREEN ====== -->
+    <div class="screen" id="screen-start">
+      <div class="sheet-selector">
+        <div class="field-label" style="margin-bottom:8px">Google Sheet URL</div>
+        <input type="text" class="field-input" id="sheetUrlInput" placeholder="Paste Google Sheets URL..." style="font-size:12px; margin-bottom:8px" onchange="onSheetUrlChange()">
+        <div id="recentSheetsArea" style="display:none">
+          <div class="field-label" style="margin-bottom:4px; margin-top:8px">Recent Sheets</div>
+          <select id="recentSheets" class="field-input" style="padding:8px" onchange="onRecentSheetSelect()">
+            <option value="">— select —</option>
+          </select>
+        </div>
+        <div class="col-indicator" id="sheetName" style="margin-top:8px"></div>
+
+        <div style="margin-top:12px">
+          <div class="field-label" style="margin-bottom:8px">Target Tab</div>
+          <select id="sheetSelect" onchange="updateColumnIndicator()" style="width:100%;padding:10px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:14px">
+            <option value="1">Pricing 1</option>
+          </select>
+        </div>
+        <div class="col-indicator" id="colIndicator">Paste a sheet URL above to get started</div>
+      </div>
+
+      <div class="mode-cards">
+        <div class="mode-card" onclick="startInterview()">
+          <div class="icon">🎙️</div>
+          <div class="title">Interview</div>
+          <div class="desc">Guided Q&A, one field at a time</div>
+        </div>
+        <div class="mode-card" onclick="startAudioDump()">
+          <div class="icon">🎤</div>
+          <div class="title">Audio Dump</div>
+          <div class="desc">Describe all tables, Claude parses</div>
+        </div>
+      </div>
+
+      <div class="toggles">
+        <label class="toggle">
+          <input type="checkbox" id="ttsToggle" checked>
+          <div class="toggle-track"></div>
+          TTS
+        </label>
+        <label class="toggle">
+          <input type="checkbox" id="autoListenToggle" checked>
+          <div class="toggle-track"></div>
+          Auto-listen
+        </label>
+      </div>
+    </div>
+
+    <!-- ====== INTERVIEW SCREEN ====== -->
+    <div class="screen" id="screen-interview">
+      <div class="table-counter" id="tableCounter">Table <strong>1</strong></div>
+      <div class="interview-area">
+        <div class="section-label" id="sectionLabel">SPECS</div>
+        <div class="question-text" id="questionText">Loading...</div>
+
+        <div class="mic-area">
+          <button class="mic-btn" id="micBtn" onclick="toggleRecording()">🎙️</button>
+          <div class="mic-status" id="micStatus">Tap to speak</div>
+        </div>
+
+        <div class="transcript-live" id="transcriptLive"></div>
+        <div class="answer-display" id="answerDisplay"></div>
+
+        <div class="nav-row">
+          <button class="btn btn-outline btn-sm" onclick="skipQuestion()">Skip</button>
+          <button class="btn btn-outline btn-sm" onclick="undoAnswer()">Undo</button>
+        </div>
+
+        <div class="answer-history" id="answerHistory"></div>
+      </div>
+
+      <div class="nav-row">
+        <button class="btn btn-outline btn-sm" onclick="finishCurrentTable()">Next Table</button>
+        <button class="btn btn-gold btn-sm" onclick="finishAllTables()">Send to Sheet</button>
+      </div>
+    </div>
+
+    <!-- ====== AUDIO DUMP SCREEN ====== -->
+    <div class="screen" id="screen-dump">
+      <div class="dump-area">
+        <div class="section-label">AUDIO DUMP</div>
+        <div class="timer" id="dumpTimer">0:00</div>
+
+        <div class="mic-area">
+          <button class="mic-btn" id="dumpMicBtn" onclick="toggleDumpRecording()">🎙️</button>
+          <div class="mic-status" id="dumpMicStatus">Tap to start recording</div>
+        </div>
+
+        <div class="dump-transcript" id="dumpTranscript" style="display:none"></div>
+      </div>
+
+      <div class="nav-row">
+        <button class="btn btn-outline btn-sm" onclick="showScreen('start')">Cancel</button>
+        <button class="btn btn-gold btn-sm" id="dumpSendBtn" onclick="processDumpTranscript()" disabled>Send to Sheet</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- PROCESSING OVERLAY -->
+<div class="processing-overlay" id="processingOverlay">
+  <div class="spinner"></div>
+  <div class="processing-text" id="processingText">Transcribing audio...</div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast">
+  <div class="toast-title" id="toastTitle"></div>
+  <div class="toast-body" id="toastBody"></div>
+  <div class="toast-actions">
+    <button class="btn btn-outline btn-sm" onclick="hideToast()">Dismiss</button>
+    <button class="btn btn-gold btn-sm" onclick="newQuote()">New Quote</button>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// STATE
+// ============================================================
+const STATE = {
+  products: [],
+  currentProduct: {},
+  currentTable: 1,
+  startColumn: 'E',
+  spreadsheetId: '',
+  questionIndex: 0,
+  recording: false,
+  mediaRecorder: null,
+  audioChunks: [],
+  dumpRecording: false,
+  dumpChunks: [],
+  dumpTimer: null,
+  dumpSeconds: 0,
+  dumpFullTranscript: '',
+  interviewTranscripts: [],
+};
+
+// ============================================================
+// SETTINGS
+// ============================================================
+function loadSettings() {
+  return {
+    openaiKey: localStorage.getItem('st_openai_key') || '',
+    anthropicKey: localStorage.getItem('st_anthropic_key') || '',
+    appsScriptUrl: localStorage.getItem('st_apps_script_url') || '',
+    tts: localStorage.getItem('st_tts') !== 'false',
+    autoListen: localStorage.getItem('st_auto_listen') !== 'false',
+  };
+}
+
+function saveSettings() {
+  localStorage.setItem('st_openai_key', el('openaiKey').value.trim());
+  localStorage.setItem('st_anthropic_key', el('anthropicKey').value.trim());
+  localStorage.setItem('st_apps_script_url', el('appsScriptUrl').value.trim());
+  showScreen('start');
+  loadSheetInfo();
+}
+
+function clearAllSettings() {
+  if (confirm('Clear all saved settings and API keys?')) {
+    localStorage.clear();
+    location.reload();
+  }
+}
+
+function populateSettingsFields() {
+  const s = loadSettings();
+  el('openaiKey').value = s.openaiKey;
+  el('anthropicKey').value = s.anthropicKey;
+  el('appsScriptUrl').value = s.appsScriptUrl;
+  el('ttsToggle').checked = s.tts;
+  el('autoListenToggle').checked = s.autoListen;
+}
+
+async function testConnections() {
+  const results = el('testResults');
+  results.innerHTML = '<div class="test-result" style="color:var(--text-dim)">Testing...</div>';
+
+  const s = loadSettings();
+  let html = '';
+
+  // Test OpenAI
+  try {
+    const r = await fetch('https://api.openai.com/v1/models/whisper-1', {
+      headers: { 'Authorization': 'Bearer ' + (el('openaiKey').value.trim() || s.openaiKey) }
+    });
+    html += r.ok
+      ? '<div class="test-result test-ok"><span class="status-dot ok"></span> OpenAI: Connected</div>'
+      : '<div class="test-result test-err"><span class="status-dot err"></span> OpenAI: ' + r.status + '</div>';
+  } catch(e) {
+    html += '<div class="test-result test-err"><span class="status-dot err"></span> OpenAI: ' + e.message + '</div>';
+  }
+
+  // Test Anthropic
+  try {
+    const r = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': el('anthropicKey').value.trim() || s.anthropicKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 10, messages: [{ role: 'user', content: 'ping' }] })
+    });
+    html += r.ok
+      ? '<div class="test-result test-ok"><span class="status-dot ok"></span> Anthropic: Connected</div>'
+      : '<div class="test-result test-err"><span class="status-dot err"></span> Anthropic: ' + r.status + '</div>';
+  } catch(e) {
+    html += '<div class="test-result test-err"><span class="status-dot err"></span> Anthropic: ' + e.message + '</div>';
+  }
+
+  // Test Apps Script
+  const url = el('appsScriptUrl').value.trim() || s.appsScriptUrl;
+  if (url) {
+    try {
+      const r = await fetch(url + '?action=getSheetInfo&spreadsheetId=test');
+      const d = await r.json();
+      // Even an error response means the endpoint is reachable
+      html += (d.status === 'ok' || d.message)
+        ? '<div class="test-result test-ok"><span class="status-dot ok"></span> Apps Script: Reachable</div>'
+        : '<div class="test-result test-err"><span class="status-dot err"></span> Apps Script: Unexpected response</div>';
+    } catch(e) {
+      html += '<div class="test-result test-err"><span class="status-dot err"></span> Apps Script: ' + e.message + '</div>';
+    }
+  }
+
+  results.innerHTML = html;
+}
+
+// ============================================================
+// SPREADSHEET ID HELPERS
+// ============================================================
+function extractSpreadsheetId(url) {
+  if (!url) return '';
+  // Match /d/XXXXX/ or /d/XXXXX
+  const match = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+  return match ? match[1] : '';
+}
+
+function getRecentSheets() {
+  try { return JSON.parse(localStorage.getItem('st_recent_sheets') || '[]'); }
+  catch(e) { return []; }
+}
+
+function saveRecentSheet(name, url, id) {
+  let recent = getRecentSheets();
+  // Remove duplicate
+  recent = recent.filter(r => r.id !== id);
+  // Add to front
+  recent.unshift({ name, url, id, ts: Date.now() });
+  // Keep last 10
+  if (recent.length > 10) recent = recent.slice(0, 10);
+  localStorage.setItem('st_recent_sheets', JSON.stringify(recent));
+}
+
+function populateRecentSheets() {
+  const recent = getRecentSheets();
+  const area = el('recentSheetsArea');
+  const sel = el('recentSheets');
+
+  if (recent.length === 0) {
+    area.style.display = 'none';
+    return;
+  }
+
+  area.style.display = 'block';
+  sel.innerHTML = '<option value="">— recent sheets —</option>';
+  recent.forEach(r => {
+    const opt = document.createElement('option');
+    opt.value = r.url;
+    opt.textContent = r.name || r.id;
+    sel.appendChild(opt);
+  });
+}
+
+function onRecentSheetSelect() {
+  const url = el('recentSheets').value;
+  if (url) {
+    el('sheetUrlInput').value = url;
+    onSheetUrlChange();
+  }
+}
+
+async function onSheetUrlChange() {
+  const url = el('sheetUrlInput').value.trim();
+  const ssId = extractSpreadsheetId(url);
+
+  if (!ssId) {
+    el('sheetName').textContent = 'Invalid Google Sheets URL';
+    STATE.spreadsheetId = '';
+    return;
+  }
+
+  STATE.spreadsheetId = ssId;
+  el('sheetName').textContent = 'Loading...';
+  await loadSheetInfo();
+}
+
+// ============================================================
+// SHEET INFO
+// ============================================================
+async function loadSheetInfo() {
+  const s = loadSettings();
+  if (!s.appsScriptUrl || !STATE.spreadsheetId) return;
+
+  try {
+    const r = await fetch(s.appsScriptUrl + '?action=getSheetInfo&spreadsheetId=' + STATE.spreadsheetId);
+    const d = await r.json();
+    if (d.status === 'ok') {
+      el('sheetBadge').textContent = d.spreadsheetName || 'Connected';
+      el('sheetName').innerHTML = '✅ <strong>' + d.spreadsheetName + '</strong>';
+
+      // Save to recents
+      saveRecentSheet(d.spreadsheetName, el('sheetUrlInput').value.trim(), STATE.spreadsheetId);
+      populateRecentSheets();
+
+      if (d.pricingSheets && d.pricingSheets.length) {
+        const sel = el('sheetSelect');
+        sel.innerHTML = '';
+        d.pricingSheets.forEach(ps => {
+          const opt = document.createElement('option');
+          opt.value = ps.setNumber;
+          opt.textContent = ps.name;
+          sel.appendChild(opt);
+        });
+      }
+    } else {
+      el('sheetName').innerHTML = '❌ ' + (d.message || 'Error');
+    }
+  } catch(e) {
+    el('sheetBadge').textContent = 'Offline';
+    el('sheetName').innerHTML = '❌ ' + e.message;
+  }
+  updateColumnIndicator();
+}
+
+async function updateColumnIndicator() {
+  const s = loadSettings();
+  if (!s.appsScriptUrl || !STATE.spreadsheetId) {
+    el('colIndicator').innerHTML = 'Paste a sheet URL above to get started';
+    return;
+  }
+  const setNum = el('sheetSelect').value;
+  try {
+    const r = await fetch(s.appsScriptUrl + '?action=getNextColumn&set=' + setNum + '&spreadsheetId=' + STATE.spreadsheetId);
+    const d = await r.json();
+    if (d.status === 'ok') {
+      STATE.startColumn = d.column;
+      el('colIndicator').innerHTML = 'Next available column: <strong>' + d.column + '</strong>';
+    } else {
+      el('colIndicator').innerHTML = d.message;
+    }
+  } catch(e) {
+    el('colIndicator').innerHTML = 'Could not check columns';
+  }
+}
+
+// ============================================================
+// NAVIGATION
+// ============================================================
+function showScreen(name) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  const target = document.getElementById('screen-' + name);
+  if (target) target.classList.add('active');
+
+  if (name === 'settings') populateSettingsFields();
+  if (name === 'start') {
+    populateRecentSheets();
+    // Restore last used sheet URL if we have one
+    if (!el('sheetUrlInput').value && getRecentSheets().length > 0) {
+      const last = getRecentSheets()[0];
+      el('sheetUrlInput').value = last.url;
+      STATE.spreadsheetId = last.id;
+      loadSheetInfo();
+    } else if (STATE.spreadsheetId) {
+      loadSheetInfo();
+    }
+  }
+}
+
+function el(id) { return document.getElementById(id); }
+
+// ============================================================
+// QUESTION FLOW (Interview Mode)
+// ============================================================
+const QUESTIONS = [
+  // Section 1: Specs
+  { section: 'SPECS', q: 'Table title?', field: 'P_Title', type: 'text' },
+  { section: 'SPECS', q: 'Quantity?', field: 'P_Quantity', type: 'number' },
+  { section: 'SPECS', q: 'Dimensions?', field: '_dimensions', type: 'dimensions', hint: 'width by length, or single number for round' },
+  { section: 'SPECS', q: 'Shape?', field: 'P_Shape', type: 'text' },
+  { section: 'SPECS', q: 'Shape name?', field: 'P_ShapeCustom', type: 'text', condition: () => STATE.currentProduct.P_Shape === 'Custom Shape' },
+  { section: 'SPECS', q: 'Material type?', field: 'P_MaterialType', type: 'text' },
+  { section: 'SPECS', q: 'Lumber thickness?', field: 'P_LumberThickness', type: 'text', condition: () => ['Hardwood','Live Edge'].includes(STATE.currentProduct.P_MaterialType) },
+  { section: 'SPECS', q: 'Height?', field: 'P_HeightName', type: 'text' },
+  { section: 'SPECS', q: 'Height value?', field: 'P_HeightInput', type: 'text', condition: () => STATE.currentProduct.P_HeightName === 'Custom Height' },
+  { section: 'SPECS', q: 'Base type?', field: 'P_BaseType', type: 'text' },
+  { section: 'SPECS', q: 'Bases per table?', field: 'P_BaseQtyPP', type: 'number', condition: () => STATE.currentProduct.P_BaseType !== 'Top Only' },
+
+  // Section 2: Top Description
+  { section: 'TOP', q: 'Top material?', field: 'P_MaterialTop', type: 'text' },
+  { section: 'TOP', q: 'Style or manufacturer?', field: 'P_Desc_StyleORManufacturer', type: 'text' },
+  { section: 'TOP', q: 'Stain category?', field: 'P_Desc_StainORColor', type: 'text', hint: 'Natural Color, Stain, Dye, or skip for stone', condition: () => !isStone() },
+  { section: 'TOP', q: 'Color name?', field: 'P_Desc_ColorName', type: 'text' },
+  { section: 'TOP', q: 'Sheen?', field: 'P_Desc_SheenORFinish', type: 'text', condition: () => !isStone() },
+  { section: 'TOP', q: 'Stone finish?', field: 'P_Desc_SheenORFinish', type: 'text', condition: () => isStone() },
+  { section: 'TOP', q: 'Top thickness?', field: 'P_Desc_Thickness', type: 'text', condition: () => isStone() },
+  { section: 'TOP', q: 'Edge profile?', field: 'P_Desc_EdgeProfile', type: 'text' },
+  { section: 'TOP', q: 'Grain direction?', field: 'P_Desc_GrainDirection', type: 'text', condition: () => !isStone() },
+
+  // Section 3: Base Description — Stock
+  { section: 'BASE', q: 'Vendor?', field: 'P_Desc_BS_Vendor', type: 'text', condition: () => STATE.currentProduct.P_BaseType === 'Stock Base' },
+  { section: 'BASE', q: 'Base type?', field: 'P_Desc_BS_Type', type: 'text', condition: () => STATE.currentProduct.P_BaseType === 'Stock Base' },
+  { section: 'BASE', q: 'Style?', field: 'P_Desc_BS_Style', type: 'text', condition: () => STATE.currentProduct.P_BaseType === 'Stock Base' },
+  { section: 'BASE', q: 'Plate size?', field: 'P_Desc_BS_PlateSize', type: 'text', condition: () => STATE.currentProduct.P_BaseType === 'Stock Base' },
+  { section: 'BASE', q: 'Column size?', field: 'P_Desc_BS_ColumnSize', type: 'text', condition: () => STATE.currentProduct.P_BaseType === 'Stock Base' && STATE.currentProduct.P_Desc_BS_Vendor === 'JI Bases' },
+  { section: 'BASE', q: 'Top plate?', field: 'P_Desc_BS_TopPlateSize', type: 'text', condition: () => STATE.currentProduct.P_BaseType === 'Stock Base' && STATE.currentProduct.P_Desc_BS_Vendor === 'JI Bases' },
+
+  // Section 3: Base Description — Custom
+  { section: 'BASE', q: 'Base material?', field: 'P_Desc_BC_MaterialType', type: 'text', condition: () => STATE.currentProduct.P_BaseType === 'Custom Base' },
+  { section: 'BASE', q: 'Base style?', field: 'P_Desc_BC_Style', type: 'text', condition: () => STATE.currentProduct.P_BaseType === 'Custom Base' },
+  { section: 'BASE', q: 'Base size?', field: 'P_Desc_BC_Size', type: 'text', condition: () => STATE.currentProduct.P_BaseType === 'Custom Base' },
+  { section: 'BASE', q: 'Base details?', field: 'P_Desc_BC_Custom1', type: 'text', condition: () => STATE.currentProduct.P_BaseType === 'Custom Base' },
+
+  // Section 4: Base Finish
+  { section: 'FINISH', q: 'Finish type?', field: 'P_Desc_B_FinishType', type: 'text', condition: () => STATE.currentProduct.P_BaseType !== 'Top Only' },
+  { section: 'FINISH', q: 'Finish color?', field: 'P_Desc_B_FinishColor', type: 'text', condition: () => STATE.currentProduct.P_BaseType !== 'Top Only' },
+  { section: 'FINISH', q: 'Feet type?', field: 'P_Desc_B_Feet', type: 'text', condition: () => STATE.currentProduct.P_BaseType !== 'Top Only' },
+];
+
+function isStone() {
+  const mt = STATE.currentProduct.P_MaterialType || '';
+  return mt.startsWith('Stone') || mt === 'Laminate' || mt === 'Outdoor';
+}
+
+function getNextQuestionIndex(fromIndex) {
+  for (let i = fromIndex; i < QUESTIONS.length; i++) {
+    const q = QUESTIONS[i];
+    if (q.condition && !q.condition()) continue;
+    return i;
+  }
+  return -1; // No more questions
+}
+
+function showCurrentQuestion() {
+  const idx = getNextQuestionIndex(STATE.questionIndex);
+  if (idx === -1) {
+    // Table complete
+    finishCurrentTable();
+    return;
+  }
+  STATE.questionIndex = idx;
+  const q = QUESTIONS[idx];
+
+  el('sectionLabel').textContent = q.section;
+  el('questionText').textContent = q.q;
+  el('transcriptLive').textContent = q.hint || '';
+  el('answerDisplay').textContent = '';
+  el('micStatus').textContent = 'Tap to speak';
+  el('tableCounter').innerHTML = 'Table <strong>' + STATE.currentTable + '</strong>';
+
+  if (loadSettings().tts && el('ttsToggle').checked) {
+    speakQuestion(q.q);
+  }
+}
+
+function speakQuestion(text) {
+  if (!window.speechSynthesis) return;
+  window.speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  u.rate = 1.3; u.volume = 0.8;
+  u.onend = () => {
+    if (el('autoListenToggle').checked && !STATE.recording) {
+      setTimeout(() => startRecording(), 500);
+    }
+  };
+  window.speechSynthesis.speak(u);
+}
+
+// ============================================================
+// AUDIO RECORDING
+// ============================================================
+async function getMediaStream() {
+  return navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
+}
+
+async function startRecording() {
+  if (STATE.recording) return;
+  try {
+    const stream = await getMediaStream();
+    STATE.audioChunks = [];
+    STATE.mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm;codecs=opus' });
+
+    STATE.mediaRecorder.ondataavailable = (e) => {
+      if (e.data.size > 0) STATE.audioChunks.push(e.data);
+    };
+
+    STATE.mediaRecorder.onstop = async () => {
+      stream.getTracks().forEach(t => t.stop());
+      const blob = new Blob(STATE.audioChunks, { type: 'audio/webm' });
+      if (blob.size > 1000) {
+        await processInterviewAnswer(blob);
+      }
+    };
+
+    STATE.mediaRecorder.start(250); // Collect in 250ms chunks
+    STATE.recording = true;
+    el('micBtn').classList.add('recording');
+    el('micStatus').textContent = 'Listening...';
+    el('transcriptLive').textContent = '';
+  } catch(e) {
+    el('micStatus').textContent = 'Mic error: ' + e.message;
+  }
+}
+
+function stopRecording() {
+  if (!STATE.recording || !STATE.mediaRecorder) return;
+  STATE.recording = false;
+  STATE.mediaRecorder.stop();
+  el('micBtn').classList.remove('recording');
+  el('micBtn').classList.add('processing');
+  el('micStatus').textContent = 'Processing...';
+}
+
+function toggleRecording() {
+  if (STATE.recording) {
+    stopRecording();
+  } else {
+    startRecording();
+  }
+}
+
+// ============================================================
+// WHISPER TRANSCRIPTION
+// ============================================================
+async function transcribeAudio(audioBlob) {
+  const s = loadSettings();
+  const formData = new FormData();
+  formData.append('file', audioBlob, 'recording.webm');
+  formData.append('model', 'whisper-1');
+  formData.append('language', 'en');
+  formData.append('prompt', 'Simply Tables custom furniture quote entry. Walnut, Ash, White Oak, Red Oak, Maple, Cherry, Hickory, Eased Edge, Reverse Knife Edge, Reverse Chamfer, Bullnose, Ogee, Metal Edge Band, Cosentino, Dekton, Caesarstone, Daltile, PMI, Peter Meier, JI Bases, No Rock, BFM, Powder Coat, Mixed Plank, Book Match, DIA, Counter Height, Bar Height, Dining Height, Stone 1, Custom Base, Stock Base, Flat Metal Base, Cast Iron Base, Adjustable Glides, Semi Gloss, Polished, Leathered, Honed, Embossed');
+
+  const r = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+    method: 'POST',
+    headers: { 'Authorization': 'Bearer ' + s.openaiKey },
+    body: formData
+  });
+
+  if (!r.ok) throw new Error('Whisper error: ' + r.status);
+  const d = await r.json();
+  return d.text;
+}
+
+// ============================================================
+// CLAUDE PARSING
+// ============================================================
+const SYSTEM_PROMPT = `You are a quote entry parser for Simply Tables, a custom table manufacturing business. Your job is to interpret voice-transcribed text and map it to exact field values for the V5 Pricing sheet.
+
+CRITICAL FIELD RULES:
+- P_MaterialType: Use "Stone 1" not "Stone". Also: "Stone 2", "Stone 3", "Hardwood", "Live Edge", "Laminate", "Wood Edge Laminate", "Outdoor", "Other"
+- P_BaseType: Use "Custom Base" not "Custom". Also: "Stock Base", "Top Only"
+- P_Desc_StainORColor: This is a CATEGORY selector: "Natural Color" / "Stain" / "Dye" / "Custom Print". NOT the actual color. For stone: leave EMPTY.
+- P_Desc_ColorName: The ACTUAL color goes here: "Black", "Lunar", "Early American", etc. Used for ALL material types.
+- P_Desc_EdgeProfile: "Eased Edge" (not "Eased"), "Reverse Knife Edge" (not "Knife Edge"), "Reverse Chamfer", "Bullnose", "Ogee", "Custom Edge Profile", "Metal Edge Band"
+- P_Desc_SheenORFinish: "Matte", "Satin", "Semi Gloss" (no hyphen), "Gloss", "Polished", "Leathered", "Honed", "Embossed"
+- P_HeightName: "Dining Height", "Counter Height", "Bar Height", "Top Only", "Custom Height" — ALWAYS set this.
+- P_Desc_Thickness: Auto-fill from P_LumberThickness for hardwood. MUST set explicitly for stone ("2 cm", "3 cm", etc.)
+- P_Shape: "Standard", "DIA", "Custom Shape", "Base Only"
+- P_LumberThickness: '1.25"', '1.75"', '2.25"', '1.5"', '1"', '.75"'
+- P_Desc_BS_Vendor: "JI Bases", "No Rock", "BFM", "Tablebases.com", "Peter Meier" (PMI is off-list but common)
+- P_Desc_BS_Type: "Cast Iron Base", "Bolt Down Base", "Stainless Steel Base", "Cantilever Base", "Flat Metal Base", "Stamped X Base", "Self Stabilizing Base", "Jaxon Base"
+- P_Desc_BS_Style: "X Base", "Round", "T Base", "3 Prong", "Decorative", "4 Post", "Square", "T Base Set"
+- P_Desc_BC_MaterialType: "Hardwood + Metal", "Hardwood", "Metal" (use "Metal" not "Steel" or "Iron")
+- P_Desc_B_FinishType: "Powder Coat", "2 Color Powder Coat", "Outdoor Powder Coat", "Stained", "Natural Color", "Dyed"
+- P_Desc_B_Feet: "Adjustable Glides", "Glides Non Adjustable", "Bolt Down"
+
+AUTO-SET RULES:
+- P_Desc_GrainDirectionPrefix → "Grain Direction:" whenever P_Desc_GrainDirection has a value
+- P_Desc_Thickness → copy from P_LumberThickness for hardwood
+- Hardwood stained: P_Desc_StainORColor = "Stain", P_Desc_ColorName = actual color
+- Hardwood natural: P_Desc_StainORColor = "Natural Color"
+- Stone: P_Desc_StainORColor = empty, P_Desc_ColorName = stone color
+- All hardwood tops: P_LC103_TopPanel_Check = true
+
+CHECKBOXES — only these exact names exist:
+- P_LC103_TopPanel_Check (hardwood/live edge tops)
+- P_LC103_HBPlank_Check (custom hardwood base with planks)
+- P_LC103_HBLeg_Check (custom hardwood base with legs)
+
+"Same as table X" handling: When user says "same top as table 1" or "same base as table 2", copy all relevant fields from the referenced table.
+
+PRODUCT COLUMNS: E through V (max 18). Column D is RowKey — never assign products there.
+Numbers stay numeric. Checkboxes use true/false booleans. Only include fields that have values.`;
+
+async function callClaude(userMessage, mode) {
+  const s = loadSettings();
+  const systemMsg = SYSTEM_PROMPT + (mode === 'dump'
+    ? `\n\nParse the following audio transcript into a complete products JSON. Start product columns at "${STATE.startColumn}".
+
+Return ONLY valid JSON in this exact format:
+{
+  "products": [{ "product_column": "E", "values": { "P_Title": "...", ... } }],
+  "uncertain": { "E": { "P_FieldName": "reason for uncertainty" } },
+  "missing": { "E": ["P_FieldName1", "P_FieldName2"] }
+}
+
+Include uncertain for any field where you're not fully confident. Include missing for fields you'd expect but weren't mentioned. Apply consistency checks across all tables.`
+    : `\n\nParse this single interview answer. Current table context is provided. Return ONLY valid JSON:
+{ "field": "P_FieldName", "value": "parsed value", "confidence": "high|medium|low", "extra_fields": { "P_OtherField": "value" } }
+extra_fields is optional — use for compound answers like "powder coat black" → FinishType + FinishColor.`
+  );
+
+  const r = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': s.anthropicKey,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true'
+    },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 4096,
+      system: systemMsg,
+      messages: [{ role: 'user', content: userMessage }]
+    })
+  });
+
+  if (!r.ok) {
+    const errText = await r.text();
+    throw new Error('Claude error ' + r.status + ': ' + errText);
+  }
+  const d = await r.json();
+  const text = d.content.map(b => b.text || '').join('');
+
+  // Extract JSON from response
+  const jsonMatch = text.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) throw new Error('No JSON in Claude response');
+  return JSON.parse(jsonMatch[0]);
+}
+
+// ============================================================
+// INTERVIEW: PROCESS SINGLE ANSWER
+// ============================================================
+async function processInterviewAnswer(audioBlob) {
+  try {
+    // Transcribe
+    const transcript = await transcribeAudio(audioBlob);
+    el('transcriptLive').textContent = '"' + transcript + '"';
+
+    const q = QUESTIONS[STATE.questionIndex];
+
+    // For simple fields, send to Claude for smart parsing
+    const context = JSON.stringify(STATE.currentProduct);
+    const msg = `Current table context: ${context}\nCurrent field: ${q.field} (${q.q})\nUser said: "${transcript}"\n\nParse this answer.`;
+
+    const result = await callClaude(msg, 'interview');
+
+    // Apply the parsed value
+    if (result.value !== undefined && result.value !== null && result.value !== '') {
+      if (q.field === '_dimensions') {
+        // Claude might return width/length separately
+        if (result.extra_fields) {
+          if (result.extra_fields.P_Width) STATE.currentProduct.P_Width = result.extra_fields.P_Width;
+          if (result.extra_fields.P_Length) STATE.currentProduct.P_Length = result.extra_fields.P_Length;
+        }
+        addChip('Dimensions', result.value);
+      } else {
+        STATE.currentProduct[q.field] = result.value;
+        addChip(q.field.replace('P_','').replace('Desc_',''), result.value);
+      }
+
+      // Apply any extra fields (compound answers)
+      if (result.extra_fields) {
+        Object.entries(result.extra_fields).forEach(([k,v]) => {
+          if (v !== undefined && v !== null && v !== '') {
+            STATE.currentProduct[k] = v;
+            addChip(k.replace('P_','').replace('Desc_',''), v);
+          }
+        });
+      }
+
+      el('answerDisplay').textContent = result.value;
+    } else {
+      el('answerDisplay').textContent = '(skipped)';
+    }
+
+    // Move to next question
+    el('micBtn').classList.remove('processing');
+    STATE.questionIndex++;
+    setTimeout(() => showCurrentQuestion(), 800);
+
+  } catch(e) {
+    el('micBtn').classList.remove('processing');
+    el('micStatus').textContent = 'Error: ' + e.message;
+    console.error(e);
+  }
+}
+
+function addChip(label, value) {
+  const hist = el('answerHistory');
+  const chip = document.createElement('div');
+  chip.className = 'answer-chip';
+  chip.innerHTML = '<span class="label">' + label + ':</span> ' + value;
+  hist.appendChild(chip);
+  hist.scrollTop = hist.scrollHeight;
+}
+
+function skipQuestion() {
+  STATE.questionIndex++;
+  showCurrentQuestion();
+}
+
+function undoAnswer() {
+  if (STATE.questionIndex <= 0) return;
+  // Go back one
+  STATE.questionIndex = Math.max(0, STATE.questionIndex - 1);
+  // Find the previous valid question
+  let prevIdx = STATE.questionIndex;
+  while (prevIdx > 0) {
+    const q = QUESTIONS[prevIdx];
+    if (!q.condition || q.condition()) break;
+    prevIdx--;
+  }
+  STATE.questionIndex = prevIdx;
+
+  // Remove last chip
+  const hist = el('answerHistory');
+  if (hist.lastChild) hist.removeChild(hist.lastChild);
+
+  // Clear the field
+  const q = QUESTIONS[STATE.questionIndex];
+  if (q && q.field && q.field !== '_dimensions') {
+    delete STATE.currentProduct[q.field];
+  }
+
+  showCurrentQuestion();
+}
+
+// ============================================================
+// TABLE MANAGEMENT
+// ============================================================
+function finishCurrentTable() {
+  // Apply auto-set rules
+  applyAutoRules(STATE.currentProduct);
+
+  // Assign column
+  const colOffset = STATE.currentTable - 1;
+  const colCode = String.fromCharCode(STATE.startColumn.charCodeAt(0) + colOffset);
+  STATE.currentProduct._column = colCode;
+
+  // Save product
+  STATE.products.push({ ...STATE.currentProduct });
+
+  // Reset for next table
+  STATE.currentTable++;
+  STATE.currentProduct = {};
+  STATE.questionIndex = 0;
+  el('answerHistory').innerHTML = '';
+
+  showCurrentQuestion();
+}
+
+function applyAutoRules(product) {
+  // Grain direction prefix
+  if (product.P_Desc_GrainDirection && product.P_Desc_GrainDirection !== 'N/A') {
+    product.P_Desc_GrainDirectionPrefix = 'Grain Direction:';
+  }
+
+  // Thickness sync for hardwood
+  if (product.P_LumberThickness && !product.P_Desc_Thickness && !isStoneProduct(product)) {
+    product.P_Desc_Thickness = product.P_LumberThickness;
+  }
+
+  // LC103 for hardwood
+  if (product.P_MaterialType === 'Hardwood' || product.P_MaterialType === 'Live Edge') {
+    product.P_LC103_TopPanel_Check = true;
+  }
+}
+
+function isStoneProduct(product) {
+  return (product.P_MaterialType || '').startsWith('Stone');
+}
+
+async function finishAllTables() {
+  // Save current table if it has data
+  if (Object.keys(STATE.currentProduct).length > 0 && STATE.currentProduct.P_Title) {
+    applyAutoRules(STATE.currentProduct);
+    const colOffset = STATE.currentTable - 1;
+    const colCode = String.fromCharCode(STATE.startColumn.charCodeAt(0) + colOffset);
+    STATE.currentProduct._column = colCode;
+    STATE.products.push({ ...STATE.currentProduct });
+  }
+
+  if (STATE.products.length === 0) {
+    el('micStatus').textContent = 'No tables to send';
+    return;
+  }
+
+  // Build JSON payload
+  const payload = buildPayload(STATE.products);
+  await sendToSheet(payload);
+}
+
+function buildPayload(products) {
+  return {
+    action: 'import',
+    spreadsheetId: STATE.spreadsheetId,
+    setNumber: parseInt(el('sheetSelect').value),
+    products: products.map(p => {
+      const col = p._column;
+      const values = { ...p };
+      delete values._column;
+      return { product_column: col, values: values };
+    }),
+    uncertain: {},
+    missing: {}
+  };
+}
+
+// ============================================================
+// AUDIO DUMP MODE
+// ============================================================
+async function startDumpRecording() {
+  try {
+    const stream = await getMediaStream();
+    STATE.dumpChunks = [];
+    STATE.mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm;codecs=opus' });
+
+    STATE.mediaRecorder.ondataavailable = (e) => {
+      if (e.data.size > 0) STATE.dumpChunks.push(e.data);
+    };
+
+    STATE.mediaRecorder.onstop = () => {
+      stream.getTracks().forEach(t => t.stop());
+    };
+
+    STATE.mediaRecorder.start(1000);
+    STATE.dumpRecording = true;
+    STATE.dumpSeconds = 0;
+
+    el('dumpMicBtn').classList.add('recording');
+    el('dumpMicStatus').textContent = 'Recording...';
+
+    STATE.dumpTimer = setInterval(() => {
+      STATE.dumpSeconds++;
+      const m = Math.floor(STATE.dumpSeconds / 60);
+      const s = STATE.dumpSeconds % 60;
+      el('dumpTimer').textContent = m + ':' + String(s).padStart(2, '0');
+    }, 1000);
+
+  } catch(e) {
+    el('dumpMicStatus').textContent = 'Mic error: ' + e.message;
+  }
+}
+
+function stopDumpRecording() {
+  if (!STATE.dumpRecording) return;
+  STATE.dumpRecording = false;
+  clearInterval(STATE.dumpTimer);
+  STATE.mediaRecorder.stop();
+  el('dumpMicBtn').classList.remove('recording');
+  el('dumpMicStatus').textContent = 'Recording stopped';
+  el('dumpSendBtn').disabled = false;
+}
+
+function toggleDumpRecording() {
+  if (STATE.dumpRecording) {
+    stopDumpRecording();
+  } else {
+    startDumpRecording();
+  }
+}
+
+async function processDumpTranscript() {
+  showProcessing('Transcribing audio...');
+
+  try {
+    // Build audio blob
+    const blob = new Blob(STATE.dumpChunks, { type: 'audio/webm' });
+
+    // Whisper has a 25MB limit. If larger, we'd need to chunk.
+    // For ~10 min at webm quality, should be well under.
+    const transcript = await transcribeAudio(blob);
+
+    el('dumpTranscript').textContent = transcript;
+    el('dumpTranscript').style.display = 'block';
+    STATE.dumpFullTranscript = transcript;
+
+    // Send to Claude
+    showProcessing('Claude is parsing ' + transcript.split(' ').length + ' words...');
+    const result = await callClaude(
+      'Audio transcript from quote entry session. Starting column: ' + STATE.startColumn + '\n\n' + transcript,
+      'dump'
+    );
+
+    // Build payload and send to sheet
+    showProcessing('Writing to sheet...');
+    const payload = {
+      action: 'import',
+      spreadsheetId: STATE.spreadsheetId,
+      setNumber: parseInt(el('sheetSelect').value),
+      products: result.products || [],
+      uncertain: result.uncertain || {},
+      missing: result.missing || {}
+    };
+
+    await sendToSheet(payload);
+
+  } catch(e) {
+    hideProcessing();
+    el('dumpMicStatus').textContent = 'Error: ' + e.message;
+    console.error(e);
+  }
+}
+
+// ============================================================
+// SEND TO SHEET
+// ============================================================
+async function sendToSheet(payload) {
+  showProcessing('Writing to Pricing sheet...');
+
+  const s = loadSettings();
+  try {
+    const r = await fetch(s.appsScriptUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+      redirect: 'follow'
+    });
+
+    // Apps Script web apps redirect — we need to handle that
+    const d = await r.json();
+    hideProcessing();
+
+    if (d.status === 'ok') {
+      const sm = d.summary;
+      showToast(
+        '✅ ' + sm.productsWritten + ' products imported',
+        sm.fieldsWritten + ' fields → ' + sm.sheetName + ' (' + sm.columns + ')' +
+        (sm.uncertainCount ? '\n⚠️ ' + sm.uncertainCount + ' uncertain (yellow)' : '') +
+        (sm.missingCount ? '\n❌ ' + sm.missingCount + ' missing (red)' : '') +
+        (sm.errors.length ? '\n⛔ Errors: ' + sm.errors.join(', ') : '')
+      );
+    } else {
+      showToast('❌ Import failed', d.message || 'Unknown error');
+    }
+
+  } catch(e) {
+    hideProcessing();
+    // Apps Script redirects can cause CORS issues — try no-cors mode
+    try {
+      await fetch(s.appsScriptUrl, {
+        method: 'POST',
+        body: JSON.stringify(payload),
+        mode: 'no-cors',
+        redirect: 'follow'
+      });
+      hideProcessing();
+      showToast(
+        '📤 Data sent',
+        'Sent to sheet (could not read response due to CORS). Check the sheet to verify.'
+      );
+    } catch(e2) {
+      showToast('❌ Send failed', e2.message);
+    }
+  }
+}
+
+// ============================================================
+// PROCESSING OVERLAY
+// ============================================================
+function showProcessing(text) {
+  el('processingText').textContent = text;
+  el('processingOverlay').classList.add('active');
+}
+function hideProcessing() {
+  el('processingOverlay').classList.remove('active');
+}
+
+// ============================================================
+// TOAST
+// ============================================================
+function showToast(title, body) {
+  el('toastTitle').textContent = title;
+  el('toastBody').textContent = body;
+  el('toast').classList.add('active');
+}
+function hideToast() {
+  el('toast').classList.remove('active');
+}
+function newQuote() {
+  hideToast();
+  STATE.products = [];
+  STATE.currentProduct = {};
+  STATE.currentTable = 1;
+  STATE.questionIndex = 0;
+  STATE.dumpFullTranscript = '';
+  STATE.dumpChunks = [];
+  el('answerHistory').innerHTML = '';
+  el('dumpTranscript').textContent = '';
+  el('dumpTranscript').style.display = 'none';
+  el('dumpTimer').textContent = '0:00';
+  el('dumpSendBtn').disabled = true;
+  showScreen('start');
+  loadSheetInfo();
+}
+
+// ============================================================
+// MODE STARTERS
+// ============================================================
+function startInterview() {
+  if (!STATE.spreadsheetId) {
+    el('sheetName').innerHTML = '⚠️ Paste a Google Sheet URL first';
+    return;
+  }
+  STATE.products = [];
+  STATE.currentProduct = {};
+  STATE.currentTable = 1;
+  STATE.questionIndex = 0;
+  el('answerHistory').innerHTML = '';
+  showScreen('interview');
+  showCurrentQuestion();
+}
+
+function startAudioDump() {
+  if (!STATE.spreadsheetId) {
+    el('sheetName').innerHTML = '⚠️ Paste a Google Sheet URL first';
+    return;
+  }
+  STATE.products = [];
+  STATE.dumpChunks = [];
+  STATE.dumpFullTranscript = '';
+  el('dumpTranscript').textContent = '';
+  el('dumpTranscript').style.display = 'none';
+  el('dumpTimer').textContent = '0:00';
+  el('dumpSendBtn').disabled = true;
+  showScreen('dump');
+}
+
+// ============================================================
+// INIT
+// ============================================================
+window.addEventListener('DOMContentLoaded', () => {
+  const s = loadSettings();
+  if (!s.openaiKey || !s.anthropicKey || !s.appsScriptUrl) {
+    showScreen('settings');
+  } else {
+    showScreen('start');
+  }
+
+  // Save toggle state changes
+  el('ttsToggle').addEventListener('change', () => localStorage.setItem('st_tts', el('ttsToggle').checked));
+  el('autoListenToggle').addEventListener('change', () => localStorage.setItem('st_auto_listen', el('autoListenToggle').checked));
+});
+</script>
+</body>
+</html>
