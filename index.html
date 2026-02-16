@@ -1083,6 +1083,7 @@ const SYSTEM_PROMPT = `You are a quote entry parser for Simply Tables, a custom 
 CRITICAL FIELD RULES:
 - P_MaterialType: Use "Stone 1" not "Stone". Also: "Stone 2", "Stone 3", "Hardwood", "Live Edge", "Laminate", "Wood Edge Laminate", "Outdoor", "Other"
 - P_BaseType: Use "Custom Base" not "Custom". Also: "Stock Base", "Top Only"
+- P_BaseQtyPP: Bases per top. Use this EXACT name — NOT "P_BasesPerTop" or any other variation.
 - P_Desc_StainORColor: This is a CATEGORY selector: "Natural Color" / "Stain" / "Dye" / "Custom Print". NOT the actual color. For stone: leave EMPTY.
 - P_Desc_ColorName: The ACTUAL color goes here: "Black", "Lunar", "Early American", etc. Used for ALL material types.
 - P_Desc_EdgeProfile: "Eased Edge" (not "Eased"), "Reverse Knife Edge" (not "Knife Edge"), "Reverse Chamfer", "Bullnose", "Ogee", "Custom Edge Profile", "Metal Edge Band"
@@ -1114,7 +1115,13 @@ CHECKBOXES — only these exact names exist:
 "Same as table X" handling: When user says "same top as table 1" or "same base as table 2", copy all relevant fields from the referenced table.
 
 PRODUCT COLUMNS: E through V (max 18). Column D is RowKey — never assign products there.
-Numbers stay numeric. Checkboxes use true/false booleans. Only include fields that have values.`;
+Numbers stay numeric. Checkboxes use true/false booleans. Only include fields that have values.
+
+CRITICAL: Use ONLY the exact P_ field names listed in this prompt. NEVER invent field names. Common mistakes to avoid:
+- P_BasesPerTop → WRONG. Use P_BaseQtyPP
+- P_Material → WRONG. Use P_MaterialType or P_MaterialTop
+- P_Height → WRONG. Use P_HeightName
+- P_Base → WRONG. Use P_BaseType`;
 
 async function callClaude(userMessage, mode) {
   const s = loadSettings();
