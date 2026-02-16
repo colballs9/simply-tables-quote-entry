@@ -219,6 +219,11 @@ body {
 /* ====== AUDIO DUMP ====== */
 .dump-area { display: flex; flex-direction: column; align-items: center; gap: 20px; flex: 1; }
 
+.dump-toggle { display: flex; gap: 8px; }
+.dump-toggle .btn { transition: opacity 0.2s; }
+
+#dumpMicArea { display: flex; flex-direction: column; align-items: center; gap: 20px; }
+
 .timer {
   font-family: 'JetBrains Mono', monospace; font-size: 48px;
   font-weight: 700; color: var(--text-bright); letter-spacing: 2px;
@@ -337,8 +342,8 @@ body {
         </div>
         <div class="mode-card" onclick="startAudioDump()">
           <div class="icon">🎤</div>
-          <div class="title">Audio Dump</div>
-          <div class="desc">Describe all tables, Claude parses</div>
+          <div class="title">Dump</div>
+          <div class="desc">Record, type, or paste — Claude parses</div>
         </div>
       </div>
 
@@ -388,12 +393,29 @@ body {
     <!-- ====== AUDIO DUMP SCREEN ====== -->
     <div class="screen" id="screen-dump">
       <div class="dump-area">
-        <div class="section-label">AUDIO DUMP</div>
-        <div class="timer" id="dumpTimer">0:00</div>
+        <div class="section-label">DUMP MODE</div>
 
-        <div class="mic-area">
-          <button class="mic-btn" id="dumpMicBtn" onclick="toggleDumpRecording()">🎙️</button>
-          <div class="mic-status" id="dumpMicStatus">Tap to start recording</div>
+        <div class="dump-toggle">
+          <button class="btn btn-sm" id="dumpMicMode" onclick="setDumpMode('mic')" style="opacity:1">🎙️ Record</button>
+          <button class="btn btn-sm" id="dumpTextMode" onclick="setDumpMode('text')" style="opacity:0.4">⌨️ Type / Paste</button>
+        </div>
+
+        <!-- Mic mode -->
+        <div id="dumpMicArea">
+          <div class="timer" id="dumpTimer">0:00</div>
+          <div class="mic-area">
+            <button class="mic-btn" id="dumpMicBtn" onclick="toggleDumpRecording()">🎙️</button>
+            <div class="mic-status" id="dumpMicStatus">Tap to start recording</div>
+          </div>
+        </div>
+
+        <!-- Text mode -->
+        <div id="dumpTextArea" style="display:none; width:100%">
+          <textarea class="field-input" id="dumpTextInput" rows="10"
+            style="width:100%;resize:vertical;font-size:14px;line-height:1.6"
+            placeholder="Type or paste your quote specs here...
+
+Example: T-1, quantity 4, 24 by 24, dining height, standard shape, ash hardwood, one and a quarter, eased edge, matte, stain natural color, mixed plank, grain length, stock base PMI flat metal base round 18 inch diameter plate, one base per table, powder coat black, adjustable glides."></textarea>
         </div>
 
         <div class="dump-transcript" id="dumpTranscript" style="display:none"></div>
@@ -401,7 +423,7 @@ body {
 
       <div class="nav-row">
         <button class="btn btn-outline btn-sm" onclick="showScreen('start')">Cancel</button>
-        <button class="btn btn-gold btn-sm" id="dumpSendBtn" onclick="processDumpTranscript()" disabled>Send to Sheet</button>
+        <button class="btn btn-gold btn-sm" id="dumpSendBtn" onclick="processDump()">Send to Sheet</button>
       </div>
     </div>
   </div>
@@ -1133,6 +1155,16 @@ function buildPayload(products) {
 // ============================================================
 // AUDIO DUMP MODE
 // ============================================================
+let dumpMode = 'mic'; // 'mic' or 'text'
+
+function setDumpMode(mode) {
+  dumpMode = mode;
+  el('dumpMicArea').style.display = mode === 'mic' ? 'block' : 'none';
+  el('dumpTextArea').style.display = mode === 'text' ? 'block' : 'none';
+  el('dumpMicMode').style.opacity = mode === 'mic' ? '1' : '0.4';
+  el('dumpTextMode').style.opacity = mode === 'text' ? '1' : '0.4';
+}
+
 async function startDumpRecording() {
   try {
     const stream = await getMediaStream();
@@ -1173,7 +1205,6 @@ function stopDumpRecording() {
   STATE.mediaRecorder.stop();
   el('dumpMicBtn').classList.remove('recording');
   el('dumpMicStatus').textContent = 'Recording stopped';
-  el('dumpSendBtn').disabled = false;
 }
 
 function toggleDumpRecording() {
@@ -1184,21 +1215,42 @@ function toggleDumpRecording() {
   }
 }
 
-async function processDumpTranscript() {
-  showProcessing('Transcribing audio...');
+async function processDump() {
+  let transcript = '';
+
+  if (dumpMode === 'text') {
+    // Text mode — grab from textarea
+    transcript = el('dumpTextInput').value.trim();
+    if (!transcript) {
+      el('dumpTranscript').textContent = 'Type or paste your specs first';
+      el('dumpTranscript').style.display = 'block';
+      return;
+    }
+  } else {
+    // Mic mode — stop recording if active, then transcribe
+    if (STATE.dumpRecording) stopDumpRecording();
+
+    if (STATE.dumpChunks.length === 0) {
+      el('dumpMicStatus').textContent = 'Record something first';
+      return;
+    }
+
+    showProcessing('Transcribing audio...');
+    try {
+      const blob = new Blob(STATE.dumpChunks, { type: 'audio/webm' });
+      transcript = await transcribeAudio(blob);
+    } catch(e) {
+      hideProcessing();
+      el('dumpMicStatus').textContent = 'Transcription error: ' + e.message;
+      return;
+    }
+  }
+
+  el('dumpTranscript').textContent = transcript;
+  el('dumpTranscript').style.display = 'block';
+  STATE.dumpFullTranscript = transcript;
 
   try {
-    // Build audio blob
-    const blob = new Blob(STATE.dumpChunks, { type: 'audio/webm' });
-
-    // Whisper has a 25MB limit. If larger, we'd need to chunk.
-    // For ~10 min at webm quality, should be well under.
-    const transcript = await transcribeAudio(blob);
-
-    el('dumpTranscript').textContent = transcript;
-    el('dumpTranscript').style.display = 'block';
-    STATE.dumpFullTranscript = transcript;
-
     // Send to Claude
     showProcessing('Claude is parsing ' + transcript.split(' ').length + ' words...');
     const result = await callClaude(
@@ -1313,7 +1365,7 @@ function newQuote() {
   el('dumpTranscript').textContent = '';
   el('dumpTranscript').style.display = 'none';
   el('dumpTimer').textContent = '0:00';
-  el('dumpSendBtn').disabled = true;
+  el('dumpTextInput').value = '';
   showScreen('start');
   loadSheetInfo();
 }
@@ -1343,10 +1395,12 @@ function startAudioDump() {
   STATE.products = [];
   STATE.dumpChunks = [];
   STATE.dumpFullTranscript = '';
+  dumpMode = 'mic';
   el('dumpTranscript').textContent = '';
   el('dumpTranscript').style.display = 'none';
   el('dumpTimer').textContent = '0:00';
-  el('dumpSendBtn').disabled = true;
+  el('dumpTextInput').value = '';
+  setDumpMode('mic');
   showScreen('dump');
 }
 
