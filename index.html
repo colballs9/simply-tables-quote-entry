@@ -224,11 +224,6 @@ body {
 
 #dumpMicArea { display: flex; flex-direction: column; align-items: center; gap: 20px; }
 
-.timer {
-  font-family: 'JetBrains Mono', monospace; font-size: 48px;
-  font-weight: 700; color: var(--text-bright); letter-spacing: 2px;
-}
-
 .dump-transcript {
   width: 100%; max-height: 300px; overflow-y: auto;
   background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
@@ -277,6 +272,53 @@ body {
   text-align: center;
 }
 .table-counter strong { color: var(--gold); }
+
+.keyboard-hints {
+  display: flex; gap: 16px; justify-content: center; padding: 8px;
+  font-size: 11px; color: #555;
+}
+.keyboard-hints kbd {
+  background: var(--surface3); padding: 2px 6px; border-radius: 3px;
+  font-family: 'JetBrains Mono', monospace; font-size: 10px;
+  border: 1px solid var(--border);
+}
+
+.rec-indicator {
+  width: 12px; height: 12px; border-radius: 50%; margin-top: 4px;
+  transition: all 0.3s;
+}
+.rec-indicator.active {
+  background: var(--red);
+  box-shadow: 0 0 8px rgba(239,83,80,0.6);
+  animation: recPulse 1s ease-in-out infinite;
+}
+.rec-indicator.paused {
+  background: var(--gold);
+  animation: none;
+}
+@keyframes recPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+.upload-zone {
+  width: 100%; padding: 40px 20px; border: 2px dashed var(--border);
+  border-radius: 12px; text-align: center; cursor: pointer;
+  transition: all 0.2s; background: var(--surface);
+}
+.upload-zone:hover { border-color: var(--gold); background: var(--gold-glow); }
+.upload-zone.dragover { border-color: var(--gold); background: var(--gold-glow); }
+.upload-icon { font-size: 36px; margin-bottom: 8px; }
+.upload-text { font-weight: 600; font-size: 15px; margin-bottom: 4px; }
+.upload-hint { font-size: 12px; color: var(--text-dim); }
+
+.timer {
+  font-family: 'JetBrains Mono', monospace; font-size: 48px;
+  font-weight: 700; color: var(--text-bright); letter-spacing: 2px;
+  tabular-nums: true; font-variant-numeric: tabular-nums;
+}
+.timer.recording { color: var(--red); }
+.timer.paused { color: var(--gold); }
 </style>
 </head>
 <body>
@@ -343,7 +385,12 @@ body {
         <div class="mode-card" onclick="startAudioDump()">
           <div class="icon">🎤</div>
           <div class="title">Dump</div>
-          <div class="desc">Record, type, or paste — Claude parses</div>
+          <div class="desc">Record, type, or paste</div>
+        </div>
+        <div class="mode-card" onclick="startImport()">
+          <div class="icon">📁</div>
+          <div class="title">Import</div>
+          <div class="desc">Upload audio file</div>
         </div>
       </div>
 
@@ -363,7 +410,7 @@ body {
 
     <!-- ====== INTERVIEW SCREEN ====== -->
     <div class="screen" id="screen-interview">
-      <div class="table-counter" id="tableCounter">Table <strong>1</strong></div>
+      <div class="table-counter" id="tableCounter">Table <strong>1</strong> <span id="tableColLabel"></span></div>
       <div class="interview-area">
         <div class="section-label" id="sectionLabel">SPECS</div>
         <div class="question-text" id="questionText">Loading...</div>
@@ -371,10 +418,16 @@ body {
         <div class="mic-area">
           <button class="mic-btn" id="micBtn" onclick="toggleRecording()">🎙️</button>
           <div class="mic-status" id="micStatus">Tap to speak</div>
+          <div class="rec-indicator" id="recIndicator"></div>
         </div>
 
         <div class="transcript-live" id="transcriptLive"></div>
         <div class="answer-display" id="answerDisplay"></div>
+
+        <div class="nav-row" id="interviewRecControls" style="display:none">
+          <button class="btn btn-outline btn-sm" onclick="pauseInterview()" id="interviewPauseBtn">⏸ Pause</button>
+          <button class="btn btn-danger btn-sm" onclick="stopInterviewRecording()">⏹ Stop</button>
+        </div>
 
         <div class="nav-row">
           <button class="btn btn-outline btn-sm" onclick="skipQuestion()">Skip</button>
@@ -385,8 +438,15 @@ body {
       </div>
 
       <div class="nav-row">
-        <button class="btn btn-outline btn-sm" onclick="finishCurrentTable()">Next Table</button>
-        <button class="btn btn-gold btn-sm" onclick="finishAllTables()">Send to Sheet</button>
+        <button class="btn btn-outline btn-sm" onclick="showScreen('start')">← Back</button>
+        <button class="btn btn-outline btn-sm" onclick="finishCurrentTable()">Next Table →</button>
+        <button class="btn btn-gold btn-sm" onclick="finishAllTables()">Submit to Sheet</button>
+      </div>
+
+      <div class="keyboard-hints">
+        <span><kbd>Space</kbd> pause/resume</span>
+        <span><kbd>Enter</kbd> next question</span>
+        <span><kbd>Esc</kbd> skip</span>
       </div>
     </div>
 
@@ -407,6 +467,10 @@ body {
             <button class="mic-btn" id="dumpMicBtn" onclick="toggleDumpRecording()">🎙️</button>
             <div class="mic-status" id="dumpMicStatus">Tap to start recording</div>
           </div>
+          <div class="nav-row" id="dumpRecControls" style="display:none">
+            <button class="btn btn-outline btn-sm" onclick="pauseDumpRecording()" id="dumpPauseBtn">⏸ Pause</button>
+            <button class="btn btn-danger btn-sm" onclick="stopDumpRecording()">⏹ Stop</button>
+          </div>
         </div>
 
         <!-- Text mode -->
@@ -424,6 +488,31 @@ Example: T-1, quantity 4, 24 by 24, dining height, standard shape, ash hardwood,
       <div class="nav-row">
         <button class="btn btn-outline btn-sm" onclick="showScreen('start')">Cancel</button>
         <button class="btn btn-gold btn-sm" id="dumpSendBtn" onclick="processDump()">Send to Sheet</button>
+      </div>
+    </div>
+
+    <!-- ====== IMPORT SCREEN ====== -->
+    <div class="screen" id="screen-import">
+      <div class="dump-area">
+        <div class="section-label">IMPORT AUDIO FILE</div>
+
+        <div class="upload-zone" id="uploadZone" onclick="el('fileInput').click()">
+          <div class="upload-icon">📁</div>
+          <div class="upload-text">Drop audio file or click to browse</div>
+          <div class="upload-hint">mp3, m4a, wav, webm, mp4 — up to 25MB</div>
+          <input type="file" id="fileInput" accept="audio/*,.mp3,.m4a,.wav,.webm,.mp4,.ogg,.flac" style="display:none" onchange="onFileSelected(event)">
+        </div>
+
+        <div id="importFileInfo" style="display:none" class="field-group">
+          <div class="answer-chip" id="importFileName" style="font-size:13px; padding:8px 12px;"></div>
+        </div>
+
+        <div class="dump-transcript" id="importTranscript" style="display:none"></div>
+      </div>
+
+      <div class="nav-row">
+        <button class="btn btn-outline btn-sm" onclick="showScreen('start')">Cancel</button>
+        <button class="btn btn-gold btn-sm" id="importSendBtn" onclick="processImportFile()" disabled>Transcribe & Send to Sheet</button>
       </div>
     </div>
   </div>
@@ -457,12 +546,14 @@ const STATE = {
   spreadsheetId: '',
   questionIndex: 0,
   recording: false,
+  paused: false,
   mediaRecorder: null,
   audioChunks: [],
   dumpRecording: false,
   dumpChunks: [],
   dumpTimer: null,
-  dumpSeconds: 0,
+  dumpStartTime: 0,
+  dumpPausedTime: 0,
   dumpFullTranscript: '',
   interviewTranscripts: [],
 };
@@ -790,7 +881,7 @@ function showCurrentQuestion() {
   el('transcriptLive').textContent = q.hint || '';
   el('answerDisplay').textContent = '';
   el('micStatus').textContent = 'Tap to speak';
-  el('tableCounter').innerHTML = 'Table <strong>' + STATE.currentTable + '</strong>';
+  el('tableCounter').innerHTML = 'Table <strong>' + STATE.currentTable + '</strong> <span style="color:var(--text-dim)">(Column ' + String.fromCharCode(STATE.startColumn.charCodeAt(0) + STATE.currentTable - 1) + ')</span>';
 
   if (loadSettings().tts && el('ttsToggle').checked) {
     speakQuestion(q.q);
@@ -836,11 +927,14 @@ async function startRecording() {
       }
     };
 
-    STATE.mediaRecorder.start(250); // Collect in 250ms chunks
+    STATE.mediaRecorder.start(250);
     STATE.recording = true;
+    STATE.paused = false;
     el('micBtn').classList.add('recording');
     el('micStatus').textContent = 'Listening...';
     el('transcriptLive').textContent = '';
+    el('recIndicator').className = 'rec-indicator active';
+    el('interviewRecControls').style.display = 'flex';
   } catch(e) {
     el('micStatus').textContent = 'Mic error: ' + e.message;
   }
@@ -849,19 +943,110 @@ async function startRecording() {
 function stopRecording() {
   if (!STATE.recording || !STATE.mediaRecorder) return;
   STATE.recording = false;
+  STATE.paused = false;
   STATE.mediaRecorder.stop();
   el('micBtn').classList.remove('recording');
   el('micBtn').classList.add('processing');
   el('micStatus').textContent = 'Processing...';
+  el('recIndicator').className = 'rec-indicator';
+  el('interviewRecControls').style.display = 'none';
+  el('interviewPauseBtn').textContent = '⏸ Pause';
+}
+
+function pauseInterview() {
+  if (!STATE.mediaRecorder || !STATE.recording) return;
+
+  if (STATE.mediaRecorder.state === 'recording') {
+    STATE.mediaRecorder.pause();
+    STATE.paused = true;
+    el('micBtn').classList.remove('recording');
+    el('micStatus').textContent = 'Paused — Space to resume, Enter to submit';
+    el('recIndicator').className = 'rec-indicator paused';
+    el('interviewPauseBtn').textContent = '▶ Resume';
+  } else if (STATE.mediaRecorder.state === 'paused') {
+    STATE.mediaRecorder.resume();
+    STATE.paused = false;
+    el('micBtn').classList.add('recording');
+    el('micStatus').textContent = 'Listening...';
+    el('recIndicator').className = 'rec-indicator active';
+    el('interviewPauseBtn').textContent = '⏸ Pause';
+  }
+}
+
+function stopInterviewRecording() {
+  // Stop without processing — discard this answer
+  if (!STATE.recording || !STATE.mediaRecorder) return;
+  STATE.recording = false;
+  STATE.paused = false;
+  // Remove the onstop handler so it doesn't process
+  STATE.mediaRecorder.onstop = () => {
+    // Just clean up the stream
+  };
+  STATE.mediaRecorder.stop();
+  el('micBtn').classList.remove('recording');
+  el('micBtn').classList.remove('processing');
+  el('micStatus').textContent = 'Stopped — tap mic or press Space to re-record';
+  el('recIndicator').className = 'rec-indicator';
+  el('interviewRecControls').style.display = 'none';
+  el('interviewPauseBtn').textContent = '⏸ Pause';
 }
 
 function toggleRecording() {
   if (STATE.recording) {
-    stopRecording();
+    stopRecording(); // Stop and process
   } else {
     startRecording();
   }
 }
+
+// ============================================================
+// KEYBOARD SHORTCUTS
+// ============================================================
+document.addEventListener('keydown', (e) => {
+  // Only active on interview screen
+  const interviewActive = el('screen-interview').classList.contains('active');
+  const dumpActive = el('screen-dump').classList.contains('active');
+
+  // Don't capture keys when typing in a text field
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
+
+  if (interviewActive) {
+    if (e.code === 'Space') {
+      e.preventDefault();
+      if (!STATE.recording) {
+        startRecording();
+      } else {
+        pauseInterview();
+      }
+    } else if (e.code === 'Enter') {
+      e.preventDefault();
+      if (STATE.recording) {
+        stopRecording(); // Stop and process → auto-advances
+      }
+    } else if (e.code === 'Escape') {
+      e.preventDefault();
+      if (STATE.recording) {
+        stopInterviewRecording(); // Discard
+      } else {
+        skipQuestion();
+      }
+    }
+  }
+
+  if (dumpActive) {
+    if (e.code === 'Space' && dumpMode === 'mic') {
+      e.preventDefault();
+      if (!STATE.dumpRecording) {
+        startDumpRecording();
+      } else {
+        pauseDumpRecording();
+      }
+    } else if (e.code === 'Enter' && dumpMode === 'mic') {
+      e.preventDefault();
+      if (STATE.dumpRecording) stopDumpRecording();
+    }
+  }
+});
 
 // ============================================================
 // WHISPER TRANSCRIPTION
@@ -1021,11 +1206,15 @@ async function processInterviewAnswer(audioBlob) {
 
     // Move to next question
     el('micBtn').classList.remove('processing');
+    el('recIndicator').className = 'rec-indicator';
+    el('interviewRecControls').style.display = 'none';
     STATE.questionIndex++;
     setTimeout(() => showCurrentQuestion(), 800);
 
   } catch(e) {
     el('micBtn').classList.remove('processing');
+    el('recIndicator').className = 'rec-indicator';
+    el('interviewRecControls').style.display = 'none';
     el('micStatus').textContent = 'Error: ' + e.message;
     console.error(e);
   }
@@ -1181,20 +1370,54 @@ async function startDumpRecording() {
 
     STATE.mediaRecorder.start(1000);
     STATE.dumpRecording = true;
-    STATE.dumpSeconds = 0;
+    STATE.dumpStartTime = Date.now();
+    STATE.dumpPausedTime = 0;
 
     el('dumpMicBtn').classList.add('recording');
     el('dumpMicStatus').textContent = 'Recording...';
+    el('dumpRecControls').style.display = 'flex';
+    el('dumpTimer').classList.add('recording');
+    el('dumpTimer').classList.remove('paused');
 
+    // Smooth timer — update every 100ms
     STATE.dumpTimer = setInterval(() => {
-      STATE.dumpSeconds++;
-      const m = Math.floor(STATE.dumpSeconds / 60);
-      const s = STATE.dumpSeconds % 60;
+      const elapsed = Math.floor((Date.now() - STATE.dumpStartTime - STATE.dumpPausedTime) / 1000);
+      const m = Math.floor(elapsed / 60);
+      const s = elapsed % 60;
       el('dumpTimer').textContent = m + ':' + String(s).padStart(2, '0');
-    }, 1000);
+    }, 100);
 
   } catch(e) {
     el('dumpMicStatus').textContent = 'Mic error: ' + e.message;
+  }
+}
+
+function pauseDumpRecording() {
+  if (!STATE.mediaRecorder) return;
+
+  if (STATE.mediaRecorder.state === 'recording') {
+    STATE.mediaRecorder.pause();
+    STATE._pauseStart = Date.now();
+    clearInterval(STATE.dumpTimer);
+    el('dumpMicBtn').classList.remove('recording');
+    el('dumpMicStatus').textContent = 'Paused';
+    el('dumpPauseBtn').textContent = '▶ Resume';
+    el('dumpTimer').classList.remove('recording');
+    el('dumpTimer').classList.add('paused');
+  } else if (STATE.mediaRecorder.state === 'paused') {
+    STATE.dumpPausedTime += Date.now() - STATE._pauseStart;
+    STATE.mediaRecorder.resume();
+    el('dumpMicBtn').classList.add('recording');
+    el('dumpMicStatus').textContent = 'Recording...';
+    el('dumpPauseBtn').textContent = '⏸ Pause';
+    el('dumpTimer').classList.add('recording');
+    el('dumpTimer').classList.remove('paused');
+    STATE.dumpTimer = setInterval(() => {
+      const elapsed = Math.floor((Date.now() - STATE.dumpStartTime - STATE.dumpPausedTime) / 1000);
+      const m = Math.floor(elapsed / 60);
+      const s = elapsed % 60;
+      el('dumpTimer').textContent = m + ':' + String(s).padStart(2, '0');
+    }, 100);
   }
 }
 
@@ -1204,7 +1427,11 @@ function stopDumpRecording() {
   clearInterval(STATE.dumpTimer);
   STATE.mediaRecorder.stop();
   el('dumpMicBtn').classList.remove('recording');
-  el('dumpMicStatus').textContent = 'Recording stopped';
+  el('dumpMicStatus').textContent = 'Recording stopped — ' + el('dumpTimer').textContent;
+  el('dumpRecControls').style.display = 'none';
+  el('dumpPauseBtn').textContent = '⏸ Pause';
+  el('dumpTimer').classList.remove('recording');
+  el('dumpTimer').classList.remove('paused');
 }
 
 function toggleDumpRecording() {
@@ -1286,48 +1513,39 @@ async function sendToSheet(payload) {
 
   const s = loadSettings();
   try {
+    // Use text/plain to avoid CORS preflight — Apps Script still reads the JSON from e.postData.contents
     const r = await fetch(s.appsScriptUrl, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'text/plain' },
       body: JSON.stringify(payload),
       redirect: 'follow'
     });
 
-    // Apps Script web apps redirect — we need to handle that
-    const d = await r.json();
+    const text = await r.text();
     hideProcessing();
 
-    if (d.status === 'ok') {
-      const sm = d.summary;
-      showToast(
-        '✅ ' + sm.productsWritten + ' products imported',
-        sm.fieldsWritten + ' fields → ' + sm.sheetName + ' (' + sm.columns + ')' +
-        (sm.uncertainCount ? '\n⚠️ ' + sm.uncertainCount + ' uncertain (yellow)' : '') +
-        (sm.missingCount ? '\n❌ ' + sm.missingCount + ' missing (red)' : '') +
-        (sm.errors.length ? '\n⛔ Errors: ' + sm.errors.join(', ') : '')
-      );
-    } else {
-      showToast('❌ Import failed', d.message || 'Unknown error');
+    try {
+      const d = JSON.parse(text);
+      if (d.status === 'ok') {
+        const sm = d.summary;
+        showToast(
+          '✅ ' + sm.productsWritten + ' products imported',
+          sm.fieldsWritten + ' fields → ' + sm.sheetName + ' (' + sm.columns + ')' +
+          (sm.uncertainCount ? '\n⚠️ ' + sm.uncertainCount + ' uncertain (yellow)' : '') +
+          (sm.missingCount ? '\n❌ ' + sm.missingCount + ' missing (red)' : '') +
+          (sm.errors.length ? '\n⛔ Errors: ' + sm.errors.join(', ') : '')
+        );
+      } else {
+        showToast('❌ Import failed', d.message || 'Unknown error');
+      }
+    } catch(parseErr) {
+      // Response wasn't JSON — might be an HTML redirect page
+      showToast('📤 Data sent', 'Sent to sheet but could not parse response. Check the sheet to verify.');
     }
 
   } catch(e) {
     hideProcessing();
-    // Apps Script redirects can cause CORS issues — try no-cors mode
-    try {
-      await fetch(s.appsScriptUrl, {
-        method: 'POST',
-        body: JSON.stringify(payload),
-        mode: 'no-cors',
-        redirect: 'follow'
-      });
-      hideProcessing();
-      showToast(
-        '📤 Data sent',
-        'Sent to sheet (could not read response due to CORS). Check the sheet to verify.'
-      );
-    } catch(e2) {
-      showToast('❌ Send failed', e2.message);
-    }
+    showToast('❌ Send failed', e.message);
   }
 }
 
@@ -1361,11 +1579,18 @@ function newQuote() {
   STATE.questionIndex = 0;
   STATE.dumpFullTranscript = '';
   STATE.dumpChunks = [];
+  STATE.paused = false;
   el('answerHistory').innerHTML = '';
   el('dumpTranscript').textContent = '';
   el('dumpTranscript').style.display = 'none';
   el('dumpTimer').textContent = '0:00';
+  el('dumpTimer').classList.remove('recording', 'paused');
   el('dumpTextInput').value = '';
+  el('importTranscript').textContent = '';
+  el('importTranscript').style.display = 'none';
+  el('importFileInfo').style.display = 'none';
+  el('importSendBtn').disabled = true;
+  importFile = null;
   showScreen('start');
   loadSheetInfo();
 }
@@ -1399,10 +1624,115 @@ function startAudioDump() {
   el('dumpTranscript').textContent = '';
   el('dumpTranscript').style.display = 'none';
   el('dumpTimer').textContent = '0:00';
+  el('dumpTimer').classList.remove('recording', 'paused');
   el('dumpTextInput').value = '';
   setDumpMode('mic');
   showScreen('dump');
 }
+
+// ============================================================
+// IMPORT MODE — File Upload
+// ============================================================
+let importFile = null;
+
+function startImport() {
+  if (!STATE.spreadsheetId) {
+    el('sheetName').innerHTML = '⚠️ Paste a Google Sheet URL first';
+    return;
+  }
+  importFile = null;
+  el('importFileName').textContent = '';
+  el('importFileInfo').style.display = 'none';
+  el('importTranscript').textContent = '';
+  el('importTranscript').style.display = 'none';
+  el('importSendBtn').disabled = true;
+  el('fileInput').value = '';
+  showScreen('import');
+}
+
+function onFileSelected(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  setImportFile(file);
+}
+
+function setImportFile(file) {
+  // Validate size (25MB Whisper limit)
+  if (file.size > 25 * 1024 * 1024) {
+    el('importFileName').textContent = '⚠️ File too large — Whisper limit is 25MB';
+    el('importFileInfo').style.display = 'block';
+    el('importSendBtn').disabled = true;
+    return;
+  }
+
+  importFile = file;
+  const sizeMB = (file.size / (1024 * 1024)).toFixed(1);
+  el('importFileName').innerHTML = '<span class="label">📎 ' + file.name + '</span> (' + sizeMB + ' MB)';
+  el('importFileInfo').style.display = 'block';
+  el('importSendBtn').disabled = false;
+}
+
+async function processImportFile() {
+  if (!importFile) return;
+
+  showProcessing('Transcribing ' + importFile.name + '...');
+
+  try {
+    // Send file to Whisper
+    const transcript = await transcribeAudio(importFile);
+
+    el('importTranscript').textContent = transcript;
+    el('importTranscript').style.display = 'block';
+
+    // Send to Claude
+    showProcessing('Claude is parsing ' + transcript.split(' ').length + ' words...');
+    const result = await callClaude(
+      'Audio transcript from quote entry session. Starting column: ' + STATE.startColumn + '\n\n' + transcript,
+      'dump'
+    );
+
+    // Send to sheet
+    showProcessing('Writing to sheet...');
+    const payload = {
+      action: 'import',
+      spreadsheetId: STATE.spreadsheetId,
+      setNumber: parseInt(el('sheetSelect').value),
+      products: result.products || [],
+      uncertain: result.uncertain || {},
+      missing: result.missing || {}
+    };
+
+    await sendToSheet(payload);
+
+  } catch(e) {
+    hideProcessing();
+    el('importFileName').textContent = '❌ Error: ' + e.message;
+    console.error(e);
+  }
+}
+
+// Drag and drop support for Import screen
+document.addEventListener('DOMContentLoaded', () => {
+  setTimeout(() => {
+    const zone = el('uploadZone');
+    if (!zone) return;
+
+    zone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      zone.classList.add('dragover');
+    });
+    zone.addEventListener('dragleave', () => {
+      zone.classList.remove('dragover');
+    });
+    zone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      zone.classList.remove('dragover');
+      if (e.dataTransfer.files.length > 0) {
+        setImportFile(e.dataTransfer.files[0]);
+      }
+    });
+  }, 100);
+});
 
 // ============================================================
 // INIT
