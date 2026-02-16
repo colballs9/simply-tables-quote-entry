@@ -1054,7 +1054,9 @@ document.addEventListener('keydown', (e) => {
 async function transcribeAudio(audioBlob) {
   const s = loadSettings();
   const formData = new FormData();
-  formData.append('file', audioBlob, 'recording.webm');
+  // Use original filename for File objects, fallback to recording.webm for Blobs
+  const filename = audioBlob.name || 'recording.webm';
+  formData.append('file', audioBlob, filename);
   formData.append('model', 'whisper-1');
   formData.append('language', 'en');
   formData.append('prompt', 'Simply Tables custom furniture quote entry. Walnut, Ash, White Oak, Red Oak, Maple, Cherry, Hickory, Eased Edge, Reverse Knife Edge, Reverse Chamfer, Bullnose, Ogee, Metal Edge Band, Cosentino, Dekton, Caesarstone, Daltile, PMI, Peter Meier, JI Bases, No Rock, BFM, Powder Coat, Mixed Plank, Book Match, DIA, Counter Height, Bar Height, Dining Height, Stone 1, Custom Base, Stock Base, Flat Metal Base, Cast Iron Base, Adjustable Glides, Semi Gloss, Polished, Leathered, Honed, Embossed');
@@ -1065,7 +1067,10 @@ async function transcribeAudio(audioBlob) {
     body: formData
   });
 
-  if (!r.ok) throw new Error('Whisper error: ' + r.status);
+  if (!r.ok) {
+    const errBody = await r.text();
+    throw new Error('Whisper error ' + r.status + ': ' + errBody);
+  }
   const d = await r.json();
   return d.text;
 }
