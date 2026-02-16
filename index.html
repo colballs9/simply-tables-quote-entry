@@ -1369,7 +1369,6 @@ async function callClaude(userMessage, mode) {
     ? `\n\nParse the following audio transcript into a complete products JSON. Start product columns at "${STATE.startColumn}".
 
 Return ONLY valid JSON in this exact format:
-Return ONLY valid JSON in this exact format:
 {
   "products": [{ "product_column": "E", "values": { "P_Title": "...", ... } }],
   "job_level": { "GCB1_TotalCost": 300, "LC111_GH1_TotalHours": 4 },
@@ -1379,10 +1378,6 @@ Return ONLY valid JSON in this exact format:
 
 Include uncertain for any field where you're not fully confident. Include missing for fields you'd expect but weren't mentioned. Apply consistency checks across all tables.
 Put all non-P_ range values (group cost totals, group hours totals) in the "job_level" object, NOT inside products.`
-  "missing": { "E": ["P_FieldName1", "P_FieldName2"] }
-}
-
-Include uncertain for any field where you're not fully confident. Include missing for fields you'd expect but weren't mentioned. Apply consistency checks across all tables.`
     : `\n\nParse this single interview answer. Current table context is provided. Return ONLY valid JSON:
 { "field": "P_FieldName", "value": "parsed value", "confidence": "high|medium|low", "extra_fields": { "P_OtherField": "value" } }
 extra_fields is optional — use for compound answers like "powder coat black" → FinishType + FinishColor.`
@@ -1988,26 +1983,6 @@ async function importSendStep() {
 }
 
 async function processImportFile() { await importTranscribeStep(); }
-
-    // Send to sheet
-    showProcessing('Writing to sheet...');
-    const payload = {
-      action: 'import',
-      spreadsheetId: STATE.spreadsheetId,
-      setNumber: parseInt(el('sheetSelect').value),
-      products: result.products || [],
-      uncertain: result.uncertain || {},
-      missing: result.missing || {}
-    };
-
-    await sendToSheet(payload);
-
-  } catch(e) {
-    hideProcessing();
-    el('importFileName').textContent = '❌ Error: ' + e.message;
-    console.error(e);
-  }
-}
 
 // Drag and drop support for Import screen
 document.addEventListener('DOMContentLoaded', () => {
