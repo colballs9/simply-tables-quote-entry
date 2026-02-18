@@ -1361,7 +1361,21 @@ Common mistakes to avoid:
 - P_Base → WRONG. Use P_BaseType
 - P_PanelBuilding_Check → WRONG. Use P_Hours_Panel_Top_Check
 - LC111_GH1_Total → WRONG. Use LC111_GH1_TotalHours
-- LC107_Bases_Hours → WRONG. Use P_LC107_Bases_HoursPU`;
+- LC107_Bases_Hours → WRONG. Use P_LC107_Bases_HoursPU
+- P_Qty → WRONG. Use P_Quantity
+- P_Dim1 → WRONG. Use P_Width
+- P_Dim2 → WRONG. Use P_Length
+- P_Desc_Manufacturer → WRONG. Use P_Desc_StyleORManufacturer
+- P_Desc_Style → WRONG. Use P_Desc_BS_Style (stock base) or P_Desc_BC_Style (custom base)
+- P_Desc_B_Style → WRONG. Use P_Desc_BS_Style (stock) or P_Desc_BC_Style (custom)
+- P_Desc_B_Detail → WRONG. Use P_Desc_BC_Custom1
+- P_CustomHeight → WRONG. Use P_HeightInput
+- P_ShapeName → WRONG. Use P_ShapeCustom
+- P_Style → WRONG. Use P_Desc_BS_Style, P_Desc_BC_Style, or P_Desc_Style (top style)
+- P_Finish → WRONG. Use P_Desc_B_FinishType
+- P_Color → WRONG. Use P_Desc_ColorName
+- P_Feet → WRONG. Use P_Desc_B_Feet
+- P_FinishColor → WRONG. Use P_Desc_B_FinishColor`;
 
 async function callClaude(userMessage, mode) {
   const s = loadSettings();
