@@ -870,7 +870,7 @@ async function testConnections() {
         'anthropic-version': '2023-06-01',
         'anthropic-dangerous-direct-browser-access': 'true'
       },
-      body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 10, messages: [{ role: 'user', content: 'ping' }] })
+      body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 10, messages: [{ role: 'user', content: 'ping' }] })
     });
     html += r.ok
       ? '<div class="test-result test-ok"><span class="status-dot ok"></span> Anthropic: Connected</div>'
@@ -1322,7 +1322,7 @@ Return ONLY valid JSON in this exact format:
       'anthropic-dangerous-direct-browser-access': 'true'
     },
     body: JSON.stringify({
-      model: 'claude-sonnet-4-20250514',
+      model: 'claude-sonnet-4-6',
       max_tokens: 8192,
       system: systemMsg,
       messages: [{ role: 'user', content: userMessage }]
@@ -1352,7 +1352,7 @@ Return ONLY valid JSON in this exact format:
     catch(e2) { throw new Error('Claude returned invalid JSON. Try a shorter quote.\n\nRaw: ' + text.substring(0, 200)); }
   }
 }
-
+  
 // ============================================================
 // INTERVIEW: PROCESS SINGLE ANSWER
 // ============================================================
